@@ -124,7 +124,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 /* BADGE */
 .badge{display:inline-block;padding:3px 8px;border-radius:4px;font-family:var(--font-cond);font-size:10px;letter-spacing:0.5px;font-weight:600;white-space:nowrap}
 .badge.green{background:#1a3328;color:#4caf7d}.badge.red{background:#2a1515;color:#e04040}
-.badge.amber{background:#2a2010;color:#e0a030}.badge.gray{background:#222;color:#888}
+.badge.amber{background:#2a2010;color:#e0a030}.badge.gray{background:#222;color:#888}.badge.blue{background:#15253a;color:#4090e0}
 
 /* MOBILE CARDS */
 .card-list{display:none;flex-direction:column;gap:10px;margin-bottom:18px}
@@ -254,6 +254,9 @@ tr:hover td{background:rgba(255,255,255,0.02)}
   <div class="more-item" id="mm-reports" onclick="navigate('reports');closeMore()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>Monthly Reports
   </div>
+  <div class="more-item" id="mm-uniforms" onclick="navigate('uniforms');closeMore()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>Uniform Ledger
+  </div>
   <div class="more-item" onclick="handleLogout()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>Logout
   </div>
@@ -334,7 +337,7 @@ function closeMore(){moreOpen=false;document.getElementById('moreMenu').style.di
 function closeMoreOutside(e){if(!document.getElementById('moreMenu').contains(e.target)&&!document.getElementById('bn-more').contains(e.target))closeMore()}
 
 // FAB action per page
-const FAB_ACTIONS={inventory:'openAddItem',accounting:'openAddTxFab',members:'openAddMember',sessions:'openAddSession',receipts:'openAddReceipt'};
+const FAB_ACTIONS={inventory:'openAddItem',accounting:'openAddTxFab',members:'openAddMember',sessions:'openAddSession',receipts:'openAddReceipt',uniforms:'openAddUniform'};
 function fabAction(){const fn=FAB_ACTIONS[currentPage];if(fn&&window[fn])window[fn]()}
 function openAddTxFab(){openAddTx('expense')}
 function updateFab(){const f=document.getElementById('fab');if(f)f.style.display=FAB_ACTIONS[currentPage]?'flex':'none'}
@@ -364,6 +367,7 @@ const PAGES=[
   {id:'sessions',label:'Court Sessions',grp:'Operations',icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>'},
   {id:'receipts',label:'Receipts',grp:'Operations',icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>'},
   {id:'reports',label:'Monthly Reports',grp:'Operations',icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>'},
+  {id:'uniforms',label:'Uniform Ledger',grp:'Operations',icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>'},
 ];
 
 function fmt(n){return'AED '+Number(n||0).toLocaleString('en-AE',{minimumFractionDigits:2,maximumFractionDigits:2})}
@@ -376,9 +380,9 @@ function renderNav(){
   const groups=[...new Set(PAGES.map(p=>p.grp))];
   nav.innerHTML=groups.map(g=>`<div class="nav-section">${g}</div>${PAGES.filter(p=>p.grp===g).map(p=>`<div class="nav-item ${currentPage===p.id?'active':''}" onclick="navigate('${p.id}');closeSidebar()">${p.icon}<span>${p.label}</span></div>`).join('')}`).join('');
   ['dashboard','inventory','accounting','members'].forEach(id=>{const el=document.getElementById('bn-'+id);if(el)el.classList.toggle('active',currentPage===id)});
-  ['sessions','receipts','reports'].forEach(id=>{const el=document.getElementById('mm-'+id);if(el)el.classList.toggle('active',currentPage===id)});
+  ['sessions','receipts','reports','uniforms'].forEach(id=>{const el=document.getElementById('mm-'+id);if(el)el.classList.toggle('active',currentPage===id)});
   const moreBtn=document.getElementById('bn-more');
-  if(moreBtn)moreBtn.classList.toggle('active',['sessions','receipts','reports'].includes(currentPage));
+  if(moreBtn)moreBtn.classList.toggle('active',['sessions','receipts','reports','uniforms'].includes(currentPage));
   updateFab();
 }
 
@@ -388,7 +392,7 @@ function setStatus(ok,msg){document.getElementById('statusDot').className='statu
 async function initSupabase(url,key){
   try{
     sb=createClient(url.trim(),key.trim());
-    for(const t of['wlf_inventory','wlf_transactions','wlf_members','wlf_sessions','wlf_receipts'])await sb.from(t).select('id').limit(1);
+    for(const t of['wlf_inventory','wlf_transactions','wlf_members','wlf_sessions','wlf_receipts','wlf_uniforms'])await sb.from(t).select('id').limit(1);
     setStatus(true,'Connected');
     localStorage.setItem('wlf_url',url.trim());localStorage.setItem('wlf_key',key.trim());
     navigate('dashboard');
@@ -423,7 +427,9 @@ ALTER TABLE wlf_inventory DISABLE ROW LEVEL SECURITY;
 ALTER TABLE wlf_transactions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE wlf_members DISABLE ROW LEVEL SECURITY;
 ALTER TABLE wlf_sessions DISABLE ROW LEVEL SECURITY;
-ALTER TABLE wlf_receipts DISABLE ROW LEVEL SECURITY;</code></div>
+ALTER TABLE wlf_receipts DISABLE ROW LEVEL SECURITY;
+CREATE TABLE IF NOT EXISTS wlf_uniforms (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, uniform_item text NOT NULL, size text, jersey_number text, payment_status text DEFAULT 'Unpaid', delivery_status text DEFAULT 'Pending', comments text, created_at timestamptz DEFAULT now());
+ALTER TABLE wlf_uniforms DISABLE ROW LEVEL SECURITY;</code></div>
         <button class="btn primary" onclick="handleConnect()" style="width:100%;justify-content:center;padding:13px;font-size:15px">Connect to Supabase</button>
         <div id="setupError"></div>
       </div>
@@ -940,10 +946,122 @@ function v(id){const el=document.getElementById(id);return el?(el.value||''). tr
 function iv(id){return parseInt(v(id))||0}
 function fv(id){return parseFloat(v(id))||0}
 
+
+// ── UNIFORM LEDGER ──
+async function renderUniforms(){
+  document.getElementById('pageTitle').textContent='UNIFORMS';
+  document.getElementById('topbarActions').innerHTML=`<button class="btn primary" onclick="openAddUniform()" style="padding:7px 12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 4v16m8-8H4"/></svg><span class="btn-label"> Add</span></button>`;
+  document.getElementById('content').innerHTML='<div class="loading">Loading...</div>';
+  const {data,error}=await sb.from('wlf_uniforms').select('*').order('created_at',{ascending:false});
+  if(error){document.getElementById('content').innerHTML=`<div class="error-msg">${error.message}</div>`;return}
+  const items=data||[];
+  const paid=items.filter(i=>i.payment_status==='Paid').length;
+  const received=items.filter(i=>i.delivery_status==='Received').length;
+  document.getElementById('content').innerHTML=`
+    <div class="stats-grid cols3">
+      <div class="stat-card"><div class="stat-label">Total Items</div><div class="stat-value">${items.length}</div></div>
+      <div class="stat-card green"><div class="stat-label">Paid</div><div class="stat-value">${paid}<span style="font-size:13px;color:var(--dim)"> / ${items.length}</span></div></div>
+      <div class="stat-card blue" style="--stat-color:var(--blue)"><div class="stat-label">Received</div><div class="stat-value" style="color:var(--blue)">${received}<span style="font-size:13px;color:var(--dim)"> / ${items.length}</span></div></div>
+    </div>
+    <div class="section-header"><div class="section-title">${items.length} Uniform Records</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <select class="form-input" style="width:110px;padding:8px 10px;font-size:12px" onchange="filterUni('payment',this.value)"><option value="">Payment</option><option>Paid</option><option>Unpaid</option></select>
+        <select class="form-input" style="width:110px;padding:8px 10px;font-size:12px" onchange="filterUni('delivery',this.value)"><option value="">Delivery</option><option>Received</option><option>Pending</option></select>
+      </div>
+    </div>
+    <div class="card-list" id="uniCards">
+      ${items.length?items.map(i=>`
+        <div class="data-card" data-payment="${i.payment_status}" data-delivery="${i.delivery_status}">
+          <div class="data-card-header">
+            <div>
+              <div class="data-card-title">${i.uniform_item}</div>
+              <div style="font-family:var(--font-cond);font-size:12px;color:var(--muted);margin-top:2px">Size: ${i.size||'—'} ${i.jersey_number?'· #'+i.jersey_number:''}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+              <span class="badge ${i.payment_status==='Paid'?'green':'red'}">${i.payment_status}</span>
+              <span class="badge ${i.delivery_status==='Received'?'blue':'amber'}">${i.delivery_status}</span>
+            </div>
+          </div>
+          ${i.comments?`<div style="font-size:12px;color:var(--muted);margin-top:6px;padding-top:8px;border-top:1px solid var(--border);line-height:1.5">${i.comments}</div>`:''}
+          <div class="data-card-actions"><button class="btn" onclick='openEditUniform(${JSON.stringify(i).replace(/'/g,"&apos;")})' style="font-size:12px;padding:6px 14px">Edit</button></div>
+        </div>`).join(''):'<div class="empty-state"><p>No uniform records yet</p></div>'}
+    </div>
+    <div class="table-wrap desktop-only">
+      <table><thead><tr><th>Uniform Item</th><th>Size</th><th>Jersey #</th><th>Payment</th><th>Delivery</th><th>Comments</th><th></th></tr></thead>
+      <tbody id="uniTbody">
+        ${items.length?items.map(i=>`<tr data-payment="${i.payment_status}" data-delivery="${i.delivery_status}">
+          <td style="font-weight:500">${i.uniform_item}</td>
+          <td>${i.size||'—'}</td>
+          <td style="font-family:var(--font-cond);font-size:14px">${i.jersey_number?'#'+i.jersey_number:'—'}</td>
+          <td><span class="badge ${i.payment_status==='Paid'?'green':'red'}">${i.payment_status}</span></td>
+          <td><span class="badge ${i.delivery_status==='Received'?'blue':'amber'}">${i.delivery_status}</span></td>
+          <td style="color:var(--muted);font-size:12px;max-width:200px">${i.comments||'—'}</td>
+          <td><button class="btn" onclick='openEditUniform(${JSON.stringify(i).replace(/'/g,"&apos;")})' style="padding:4px 10px;font-size:11px">Edit</button></td>
+        </tr>`).join(''):'<tr><td colspan="7"><div class="empty-state"><p>No records yet</p></div></td></tr>'}
+      </tbody></table></div>`;
+}
+
+function filterUni(type,val){
+  const attr='data-'+type;
+  document.querySelectorAll('#uniCards .data-card['+attr+']').forEach(r=>{
+    const cur=r.getAttribute(attr);
+    r.style.display=(!val||cur===val)?'':'none';
+  });
+  document.querySelectorAll('#uniTbody tr['+attr+']').forEach(r=>{
+    const cur=r.getAttribute(attr);
+    r.style.display=(!val||cur===val)?'':'none';
+  });
+}
+
+function uniformForm(i={}){return`
+  <div class="form-group"><label class="form-label">Uniform Item *</label>
+    <select class="form-input" id="uItem">
+      ${['','Jersey','Shorts','Socks','Jacket','Track Pants','Training Top','Full Kit','Cap','Bag','Other'].map(x=>`<option value="${x}" ${i.uniform_item===x?'selected':''}>${x||'Select item...'}</option>`).join('')}
+    </select></div>
+  <div class="grid-2">
+    <div class="form-group"><label class="form-label">Size</label>
+      <select class="form-input" id="uSize">
+        ${['','XS','S','M','L','XL','XXL','XXXL','Custom'].map(x=>`<option value="${x}" ${i.size===x?'selected':''}>${x||'Select...'}</option>`).join('')}
+      </select></div>
+    <div class="form-group"><label class="form-label">Jersey Number</label>
+      <input class="form-input" id="uJersey" type="text" inputmode="numeric" value="${i.jersey_number||''}" placeholder="e.g. 10"/></div>
+    <div class="form-group"><label class="form-label">Payment Status</label>
+      <select class="form-input" id="uPayment">
+        <option value="Unpaid" ${i.payment_status==='Unpaid'||!i.payment_status?'selected':''}>Unpaid</option>
+        <option value="Paid" ${i.payment_status==='Paid'?'selected':''}>Paid</option>
+      </select></div>
+    <div class="form-group"><label class="form-label">Delivery Status</label>
+      <select class="form-input" id="uDelivery">
+        <option value="Pending" ${i.delivery_status==='Pending'||!i.delivery_status?'selected':''}>Pending</option>
+        <option value="Received" ${i.delivery_status==='Received'?'selected':''}>Received</option>
+      </select></div>
+  </div>
+  <div class="form-group"><label class="form-label">Comments</label>
+    <textarea class="form-input" id="uComments" placeholder="Optional notes...">${i.comments||''}</textarea></div>`}
+
+function openAddUniform(){showModal('ADD UNIFORM',uniformForm(),async()=>{
+  const item=v('uItem');if(!item)return alert('Please select a uniform item');
+  const{error}=await sb.from('wlf_uniforms').insert({
+    uniform_item:item,size:v('uSize'),jersey_number:v('uJersey'),
+    payment_status:v('uPayment'),delivery_status:v('uDelivery'),comments:v('uComments')
+  });
+  if(error)return alert(error.message);closeModal();renderUniforms();
+},'Save Record')}
+
+function openEditUniform(i){showModal('EDIT UNIFORM',uniformForm(i)+`<div class="divider"></div><button class="btn danger" onclick="deleteUniform('${i.id}')" style="width:100%;justify-content:center">Delete Record</button>`,async()=>{
+  const{error}=await sb.from('wlf_uniforms').update({
+    uniform_item:v('uItem'),size:v('uSize'),jersey_number:v('uJersey'),
+    payment_status:v('uPayment'),delivery_status:v('uDelivery'),comments:v('uComments')
+  }).eq('id',i.id);
+  if(error)return alert(error.message);closeModal();renderUniforms();
+},'Save Changes')}
+
+async function deleteUniform(id){if(!confirm('Delete this record?'))return;await sb.from('wlf_uniforms').delete().eq('id',id);closeModal();renderUniforms()}
+
 // ── ROUTER ──
 function render(){
   if(!sb){renderSetup();renderNav();return}
-  const map={dashboard:renderDashboard,inventory:renderInventory,accounting:renderAccounting,members:renderMembers,sessions:renderSessions,receipts:renderReceipts,reports:renderReports};
+  const map={dashboard:renderDashboard,inventory:renderInventory,accounting:renderAccounting,members:renderMembers,sessions:renderSessions,receipts:renderReceipts,reports:renderReports,uniforms:renderUniforms};
   (map[currentPage]||renderDashboard)();renderNav();
 }
 
