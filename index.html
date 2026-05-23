@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Whack Ledgerflow</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --black:#0a0a0a;--dark:#111111;--darker:#0d0d0d;--card:#181818;--card2:#1e1e1e;
+  --border:#2a2a2a;--border2:#333;--text:#e8e8e8;--muted:#888;--dim:#555;
+  --white:#f0f0f0;--red:#e04040;--green:#4caf7d;--amber:#e0a030;--blue:#4090e0;
+  --font-display:'Bebas Neue',sans-serif;--font-body:'Barlow',sans-serif;--font-cond:'Barlow Condensed',sans-serif;
+}
+html,body{height:100%;background:var(--black);color:var(--text);font-family:var(--font-body);font-size:14px}
+#app{display:flex;height:100vh;overflow:hidden}
+#sidebar{width:220px;min-width:220px;background:var(--darker);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.logo-area{padding:20px 16px 16px;border-bottom:1px solid var(--border)}
+.logo-tagline{font-family:var(--font-cond);font-size:11px;letter-spacing:3px;color:var(--dim);text-transform:uppercase;margin-top:6px;padding-left:2px}
+nav{flex:1;padding:12px 0;overflow-y:auto}
+.nav-section{font-family:var(--font-cond);font-size:10px;letter-spacing:2px;color:var(--dim);padding:12px 16px 6px;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;color:var(--muted);font-family:var(--font-cond);font-size:14px;letter-spacing:0.5px;transition:all 0.15s;border-left:2px solid transparent;margin:1px 0}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,0.04)}
+.nav-item.active{color:var(--white);background:rgba(255,255,255,0.07);border-left:2px solid var(--white)}
+.nav-item svg{width:16px;height:16px;flex-shrink:0}
+.supabase-status{padding:12px 16px;border-top:1px solid var(--border);font-size:11px;color:var(--dim)}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--dim);display:inline-block;margin-right:6px}
+.status-dot.connected{background:var(--green)}.status-dot.error{background:var(--red)}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:52px;min-height:52px;background:var(--darker);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:16px}
+.page-title{font-family:var(--font-display);font-size:22px;letter-spacing:1px;color:var(--white);flex:1}
+.topbar-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:4px;font-family:var(--font-cond);font-size:13px;letter-spacing:0.5px;cursor:pointer;border:1px solid var(--border2);background:var(--card2);color:var(--text);transition:all 0.15s}
+.btn:hover{background:var(--card);border-color:#444;color:var(--white)}
+.btn.primary{background:var(--white);color:var(--black);border-color:var(--white)}.btn.primary:hover{background:#ddd}
+.btn.danger{border-color:#5a2020;color:var(--red)}.btn.danger:hover{background:#2a1010}
+.btn svg{width:14px;height:14px}
+#content{flex:1;overflow-y:auto;padding:24px;background:var(--black)}
+.setup-screen{max-width:540px;margin:60px auto}
+.setup-title{font-family:var(--font-display);font-size:42px;letter-spacing:2px;color:var(--white);margin-bottom:4px}
+.setup-sub{color:var(--muted);font-size:14px;margin-bottom:32px;font-weight:300}
+.setup-card{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:28px}
+.form-label{font-family:var(--font-cond);font-size:11px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;display:block;margin-bottom:6px}
+.form-input{width:100%;background:var(--darker);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-family:var(--font-body);font-size:13px;padding:9px 12px;outline:none;transition:border-color 0.15s}
+.form-input:focus{border-color:#555}
+.form-group{margin-bottom:18px}
+.setup-hint{font-size:11px;color:var(--dim);margin-top:6px;line-height:1.5}
+.divider{height:1px;background:var(--border);margin:20px 0}
+.error-msg{background:#2a1010;border:1px solid #5a2020;border-radius:4px;padding:10px 14px;color:#e06060;font-size:12px;margin-top:12px}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:16px 18px}
+.stat-label{font-family:var(--font-cond);font-size:11px;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;margin-bottom:8px}
+.stat-value{font-family:var(--font-display);font-size:28px;letter-spacing:1px;color:var(--white);line-height:1}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:5px}
+.stat-card.green .stat-value{color:var(--green)}.stat-card.red .stat-value{color:var(--red)}.stat-card.amber .stat-value{color:var(--amber)}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.section-title{font-family:var(--font-cond);font-size:13px;letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead tr{background:var(--card2);border-bottom:1px solid var(--border)}
+th{font-family:var(--font-cond);font-size:11px;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase;padding:10px 16px;text-align:left;white-space:nowrap}
+td{padding:10px 16px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.025)}
+.badge{display:inline-block;padding:2px 8px;border-radius:3px;font-family:var(--font-cond);font-size:11px;letter-spacing:0.5px;font-weight:600}
+.badge.green{background:#1a3328;color:#4caf7d}.badge.red{background:#2a1515;color:#e04040}
+.badge.amber{background:#2a2010;color:#e0a030}.badge.blue{background:#15253a;color:#4090e0}.badge.gray{background:#222;color:#888}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal{background:var(--card);border:1px solid var(--border2);border-radius:6px;width:100%;max-width:520px;max-height:92vh;overflow-y:auto;margin:16px}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 22px 14px;border-bottom:1px solid var(--border)}
+.modal-title{font-family:var(--font-display);font-size:20px;letter-spacing:1px;color:var(--white)}
+.modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;line-height:1;padding:2px 6px}.modal-close:hover{color:var(--text)}
+.modal-body{padding:20px 22px}
+.modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.tx-income td.amount{color:var(--green)}.tx-expense td.amount{color:var(--red)}
+.alert-banner{background:#2a1a0a;border:1px solid #5a3a10;border-radius:4px;padding:10px 14px;color:var(--amber);font-size:12px;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.empty-state{text-align:center;padding:40px 24px;color:var(--dim)}
+.empty-state p{font-family:var(--font-cond);font-size:13px;letter-spacing:1px}
+.loading{text-align:center;padding:40px;color:var(--dim);font-family:var(--font-cond);letter-spacing:2px;font-size:12px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+.full-width{margin-bottom:24px}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:20px}
+.chart-title{font-family:var(--font-cond);font-size:11px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:16px}
+.report-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.upload-area{border:1px dashed var(--border2);border-radius:4px;padding:20px;text-align:center;cursor:pointer;transition:all 0.15s;color:var(--muted)}
+.upload-area:hover{border-color:#555;color:var(--text)}
+.receipt-thumb{width:40px;height:40px;object-fit:cover;border-radius:3px;border:1px solid var(--border)}
+.receipt-placeholder{width:40px;height:40px;border-radius:3px;border:1px dashed var(--border2);display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:18px}
+textarea.form-input{resize:vertical;min-height:60px}
+select.form-input option{background:var(--darker)}
+/* LOGIN */
+#loginScreen{position:fixed;inset:0;background:var(--black);display:flex;align-items:center;justify-content:center;z-index:9999}
+.login-box{width:100%;max-width:380px;padding:16px}
+.login-logo{text-align:center;margin-bottom:32px}
+.login-logo-title{font-family:var(--font-display);font-size:56px;letter-spacing:4px;color:var(--white);line-height:1}
+.login-logo-sub{font-family:var(--font-cond);font-size:12px;letter-spacing:5px;color:var(--dim);text-transform:uppercase;margin-top:6px}
+.login-card{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:28px}
+.login-error{background:#2a1010;border:1px solid #5a2020;border-radius:4px;padding:9px 12px;color:#e06060;font-size:12px;margin-bottom:14px;display:none}
+.login-footer{text-align:center;margin-top:16px;font-size:11px;color:var(--dim);font-family:var(--font-cond);letter-spacing:1px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-title">WHACK</div>
+      <div class="login-logo-sub">Ledgerflow · UAE</div>
+    </div>
+    <div class="login-card">
+      <div class="login-error" id="loginError">Incorrect username or password.</div>
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input class="form-input" id="loginUser" type="text" placeholder="Enter username" autocomplete="username"/>
+      </div>
+      <div class="form-group" style="margin-bottom:22px">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="loginPass" type="password" placeholder="Enter password" autocomplete="current-password"/>
+      </div>
+      <button class="btn primary" onclick="handleLogin()" style="width:100%;justify-content:center;padding:10px;font-size:14px">Sign In</button>
+    </div>
+    <div class="login-footer">WHACK UAE BADMINTON CLUB</div>
+  </div>
+</div>
+
+<div id="app">
+  <div id="sidebar">
+    <div class="logo-area">
+      <svg viewBox="0 0 160 60" xmlns="http://www.w3.org/2000/svg" style="width:140px">
+        <rect width="160" height="60" rx="4" fill="#111"/>
+        <text x="8" y="44" font-family="'Bebas Neue',sans-serif" font-size="46" fill="#f0f0f0" letter-spacing="2">WHACK</text>
+        <text x="10" y="57" font-family="'Barlow Condensed',sans-serif" font-size="11" fill="#555" letter-spacing="5">UAE</text>
+      </svg>
+      <div class="logo-tagline">Ledgerflow</div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="supabase-status" style="display:flex;align-items:center;justify-content:space-between">
+      <div><span class="status-dot" id="statusDot"></span><span id="statusText">Not connected</span></div>
+      <button onclick="handleLogout()" style="background:none;border:none;color:var(--dim);cursor:pointer;font-family:var(--font-cond);font-size:11px;letter-spacing:1px;padding:0" title="Sign out">LOGOUT</button>
+    </div>
+  </div>
+  <div id="main">
+    <div class="topbar">
+      <div class="page-title" id="pageTitle">LEDGERFLOW</div>
+      <div class="topbar-actions" id="topbarActions"></div>
+    </div>
+    <div id="content"></div>
+  </div>
+</div>
+<script>
+const {createClient}=supabase;
+let sb=null, currentPage='setup';
+
+// ── LOGIN ──
+const CREDS={username:'admin',password:'123456'};
+
+function handleLogin(){
+  const user=document.getElementById('loginUser').value.trim();
+  const pass=document.getElementById('loginPass').value;
+  const err=document.getElementById('loginError');
+  if(user===CREDS.username && pass===CREDS.password){
+    sessionStorage.setItem('wlf_auth','1');
+    document.getElementById('loginScreen').style.display='none';
+    bootApp();
+  } else {
+    err.style.display='block';
+    document.getElementById('loginPass').value='';
+    document.getElementById('loginPass').focus();
+  }
+}
+
+// Allow Enter key on login fields
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter' && document.getElementById('loginScreen').style.display!=='none') handleLogin();
+});
+
+function checkAuth(){
+  if(sessionStorage.getItem('wlf_auth')==='1'){
+    document.getElementById('loginScreen').style.display='none';
+    return true;
+  }
+  return false;
+}
+
+function handleLogout(){
+  sessionStorage.removeItem('wlf_auth');
+  location.reload();
+}
+
+const PAGES=[
+  {id:'dashboard',label:'Dashboard',grp:'Main',icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>'},
+  {id:'inventory',label:'Inventory',grp:'Main',icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>'},
+  {id:'accounting',label:'Accounting',grp:'Main',icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 7H6a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-3M9 7V6a2 2 0 012-2h2.586a1 1 0 01.707.293l3.414 3.414A1 1 0 0120 8.414V13a2 2 0 01-2 2h-1M9 7H5"/></svg>'},
+  {id:'members',label:'Members',grp:'Main',icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>'},
+  {id:'sessions',label:'Court Sessions',grp:'Operations',icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>'},
+  {id:'receipts',label:'Receipts',grp:'Operations',icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>'},
+  {id:'reports',label:'Monthly Reports',grp:'Operations',icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>'},
+];
+
+function fmt(n){return'AED '+Number(n||0).toLocaleString('en-AE',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function fmtDate(d){if(!d)return'-';return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}
+
+function renderNav(){
+  const nav=document.getElementById('nav');
+  if(!sb){nav.innerHTML='';return}
+  const groups=[...new Set(PAGES.map(p=>p.grp))];
+  nav.innerHTML=groups.map(g=>`
+    <div class="nav-section">${g}</div>
+    ${PAGES.filter(p=>p.grp===g).map(p=>`<div class="nav-item ${currentPage===p.id?'active':''}" onclick="navigate('${p.id}')">${p.icon}<span>${p.label}</span></div>`).join('')}
+  `).join('');
+}
+
+function navigate(page){currentPage=page;renderNav();render()}
+function setStatus(ok,msg){
+  document.getElementById('statusDot').className='status-dot '+(ok?'connected':ok===false?'error':'');
+  document.getElementById('statusText').textContent=msg;
+}
+
+async function initSupabase(url,key){
+  try{
+    sb=createClient(url.trim(),key.trim());
+    await ensureTables();
+    setStatus(true,'Connected');
+    localStorage.setItem('wlf_url',url.trim());
+    localStorage.setItem('wlf_key',key.trim());
+    navigate('dashboard');
+  }catch(e){setStatus(false,'Error');return e.message||'Connection failed'}
+}
+
+async function ensureTables(){
+  for(const t of['wlf_inventory','wlf_transactions','wlf_members','wlf_sessions','wlf_receipts'])
+    await sb.from(t).select('id').limit(1);
+}
+
+// ── SETUP ──
+function renderSetup(){
+  document.getElementById('pageTitle').textContent='SETUP';
+  document.getElementById('topbarActions').innerHTML='';
+  const su=localStorage.getItem('wlf_url')||'',sk=localStorage.getItem('wlf_key')||'';
+  document.getElementById('content').innerHTML=`
+    <div class="setup-screen">
+      <div class="setup-title">WHACK<br>LEDGERFLOW</div>
+      <div class="setup-sub">Connect your Supabase database to get started</div>
+      <div class="setup-card">
+        <div class="form-group"><label class="form-label">Supabase Project URL</label>
+          <input class="form-input" id="sbUrl" placeholder="https://xxxx.supabase.co" value="${su}"/>
+          <div class="setup-hint">Supabase → Settings → API → Project URL</div></div>
+        <div class="form-group"><label class="form-label">Anon / Public API Key</label>
+          <input class="form-input" id="sbKey" type="password" placeholder="eyJ..." value="${sk}"/>
+          <div class="setup-hint">Supabase → Settings → API → anon/public</div></div>
+        <div class="divider"></div>
+        <div class="setup-hint" style="margin-bottom:14px;line-height:1.8">
+          <strong style="color:#aaa">Run this SQL in Supabase SQL Editor first:</strong><br><br>
+          <code style="display:block;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:4px;padding:12px;font-size:11px;color:#888;line-height:1.9;white-space:pre-wrap">CREATE TABLE IF NOT EXISTS wlf_inventory (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  name text NOT NULL, category text, quantity integer DEFAULT 0,
+  min_stock integer DEFAULT 5, unit_cost numeric DEFAULT 0,
+  supplier text, notes text, created_at timestamptz DEFAULT now());
+
+CREATE TABLE IF NOT EXISTS wlf_transactions (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  type text NOT NULL, category text, amount numeric NOT NULL,
+  description text, member_id uuid, date date DEFAULT now(),
+  receipt_url text, notes text, session_id uuid,
+  created_at timestamptz DEFAULT now());
+
+CREATE TABLE IF NOT EXISTS wlf_members (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  name text NOT NULL, email text, phone text,
+  status text DEFAULT 'active', joined_at date DEFAULT now(),
+  notes text, created_at timestamptz DEFAULT now());
+
+CREATE TABLE IF NOT EXISTS wlf_sessions (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  title text NOT NULL, court text, date date DEFAULT now(),
+  start_time text, end_time text, status text DEFAULT 'open',
+  cost numeric DEFAULT 0, attendee_count integer DEFAULT 0,
+  notes text, created_at timestamptz DEFAULT now());
+
+CREATE TABLE IF NOT EXISTS wlf_receipts (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  transaction_id uuid, description text, amount numeric DEFAULT 0,
+  vendor text, date date DEFAULT now(), image_url text,
+  image_data text, notes text, created_at timestamptz DEFAULT now());</code>
+        </div>
+        <button class="btn primary" onclick="handleConnect()" style="width:100%;justify-content:center;padding:10px">Connect to Supabase</button>
+        <div id="setupError"></div>
+      </div>
+    </div>`;
+}
+
+async function handleConnect(){
+  const url=document.getElementById('sbUrl').value,key=document.getElementById('sbKey').value;
+  const e=document.getElementById('setupError');
+  if(!url||!key){e.innerHTML='<div class="error-msg">Enter both URL and API key.</div>';return}
+  e.innerHTML='<div class="loading">Connecting...</div>';
+  const err=await initSupabase(url,key);
+  if(err)e.innerHTML=`<div class="error-msg">${err}</div>`;
+}
+
+// ── DASHBOARD ──
+async function renderDashboard(){
+  document.getElementById('pageTitle').textContent='DASHBOARD';
+  document.getElementById('topbarActions').innerHTML='';
+  document.getElementById('content').innerHTML='<div class="loading">Loading...</div>';
+  const [{data:inv},{data:txs},{data:members},{data:sessions}]=await Promise.all([
+    sb.from('wlf_inventory').select('*'),
+    sb.from('wlf_transactions').select('*'),
+    sb.from('wlf_members').select('*'),
+    sb.from('wlf_sessions').select('*').order('date',{ascending:false}).limit(5),
+  ]);
+  const income=(txs||[]).filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount),0);
+  const expense=(txs||[]).filter(t=>t.type==='expense').reduce((s,t)=>s+Number(t.amount),0);
+  const balance=income-expense;
+  const lowStock=(inv||[]).filter(i=>i.quantity<=i.min_stock);
+  const activeMembers=(members||[]).filter(m=>m.status==='active').length;
+  const recentTx=[...(txs||[])].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,6);
+
+  const monthlyMap={};
+  (txs||[]).forEach(t=>{
+    const k=t.date?t.date.slice(0,7):'';if(!k)return;
+    if(!monthlyMap[k])monthlyMap[k]={income:0,expense:0};
+    monthlyMap[k][t.type]+=Number(t.amount);
+  });
+  const months=Object.keys(monthlyMap).sort().slice(-6);
+  const mLabels=months.map(m=>{const[y,mo]=m.split('-');return new Date(y,mo-1).toLocaleString('en',{month:'short',year:'2-digit'})});
+
+  document.getElementById('content').innerHTML=`
+    <div class="stats-grid">
+      <div class="stat-card ${balance>=0?'green':'red'}">
+        <div class="stat-label">Club Balance</div><div class="stat-value" style="font-size:20px">${fmt(balance)}</div>
+        <div class="stat-sub">Income minus expenses</div></div>
+      <div class="stat-card green"><div class="stat-label">Total Income</div><div class="stat-value" style="font-size:20px">${fmt(income)}</div>
+        <div class="stat-sub">${(txs||[]).filter(t=>t.type==='income').length} transactions</div></div>
+      <div class="stat-card red"><div class="stat-label">Total Expenses</div><div class="stat-value" style="font-size:20px">${fmt(expense)}</div>
+        <div class="stat-sub">${(txs||[]).filter(t=>t.type==='expense').length} transactions</div></div>
+      <div class="stat-card"><div class="stat-label">Members / Items</div>
+        <div class="stat-value">${activeMembers}<span style="font-size:14px;color:var(--dim)"> / ${(inv||[]).length}</span></div>
+        <div class="stat-sub">${lowStock.length} low stock item(s)</div></div>
+    </div>
+    ${lowStock.length?`<div class="alert-banner">⚠️ ${lowStock.length} item(s) below minimum stock — <span onclick="navigate('inventory')" style="cursor:pointer;text-decoration:underline;margin-left:4px">View inventory</span></div>`:''}
+    <div class="two-col">
+      <div class="chart-card"><div class="chart-title">Income vs Expenses (Last 6 Months)</div><canvas id="monthChart" height="200"></canvas></div>
+      <div>
+        <div class="section-header"><div class="section-title">Recent Transactions</div></div>
+        <div class="table-wrap">
+          ${recentTx.length?`<table><thead><tr><th>Description</th><th>Type</th><th>Amount</th></tr></thead><tbody>
+            ${recentTx.map(t=>`<tr class="tx-${t.type}"><td>${t.description||'-'}</td><td><span class="badge ${t.type==='income'?'green':'red'}">${t.category||t.type}</span></td><td class="amount">${t.type==='expense'?'-':''}${fmt(t.amount)}</td></tr>`).join('')}
+          </tbody></table>`:'<div class="empty-state"><p>No transactions yet</p></div>'}
+        </div>
+      </div>
+    </div>
+    <div class="two-col">
+      <div>
+        <div class="section-header"><div class="section-title">Recent Sessions</div></div>
+        <div class="table-wrap">
+          ${(sessions||[]).length?`<table><thead><tr><th>Session</th><th>Court</th><th>Date</th><th>Status</th></tr></thead><tbody>
+            ${(sessions||[]).map(s=>`<tr><td style="font-weight:500">${s.title}</td><td>${s.court||'-'}</td><td style="font-size:12px;color:var(--muted)">${fmtDate(s.date)}</td><td><span class="badge ${s.status==='open'?'green':s.status==='cancelled'?'red':'gray'}">${s.status}</span></td></tr>`).join('')}
+          </tbody></table>`:'<div class="empty-state"><p>No sessions yet</p></div>'}
+        </div>
+      </div>
+      <div>
+        <div class="section-header"><div class="section-title">Low Stock Alerts</div></div>
+        <div class="table-wrap">
+          ${lowStock.length?`<table><thead><tr><th>Item</th><th>Qty</th><th>Min</th></tr></thead><tbody>
+            ${lowStock.slice(0,6).map(i=>`<tr><td>${i.name}</td><td><span class="badge ${i.quantity===0?'red':'amber'}">${i.quantity}</span></td><td>${i.min_stock}</td></tr>`).join('')}
+          </tbody></table>`:'<div class="empty-state"><p>All stock healthy</p></div>'}
+        </div>
+      </div>
+    </div>`;
+
+  if(months.length){
+    const ctx=document.getElementById('monthChart').getContext('2d');
+    new Chart(ctx,{type:'bar',data:{labels:mLabels,datasets:[
+      {label:'Income',data:months.map(m=>monthlyMap[m].income),backgroundColor:'rgba(76,175,125,0.7)',borderRadius:3},
+      {label:'Expenses',data:months.map(m=>monthlyMap[m].expense),backgroundColor:'rgba(224,64,64,0.7)',borderRadius:3}
+    ]},options:{responsive:true,plugins:{legend:{labels:{color:'#888',font:{size:11}}}},scales:{x:{ticks:{color:'#555'},grid:{color:'#1a1a1a'}},y:{ticks:{color:'#555',callback:v=>'AED '+v.toLocaleString()},grid:{color:'#1a1a1a'}}}}});
+  }
+}
+
+// ── INVENTORY ──
+async function renderInventory(){
+  document.getElementById('pageTitle').textContent='INVENTORY';
+  document.getElementById('topbarActions').innerHTML=`<button class="btn primary" onclick="openAddItem()">+ Add Item</button>`;
+  document.getElementById('content').innerHTML='<div class="loading">Loading...</div>';
+  const {data}=await sb.from('wlf_inventory').select('*').order('name');
+  const items=data||[];
+  document.getElementById('content').innerHTML=`
+    <div class="full-width">
+      <div class="section-header"><div class="section-title">${items.length} Items</div>
+        <input class="form-input" placeholder="Search items..." style="width:200px" oninput="filterTable(this.value,'invTbody')"/></div>
+      <div class="table-wrap"><table><thead><tr><th>Name</th><th>Category</th><th>Qty</th><th>Min</th><th>Unit Cost</th><th>Supplier</th><th>Status</th><th></th></tr></thead>
+        <tbody id="invTbody">
+          ${items.length?items.map(i=>{
+            const s=i.quantity===0?['red','Out of Stock']:i.quantity<=i.min_stock?['amber','Low Stock']:['green','In Stock'];
+            return`<tr data-search="${(i.name+i.category+i.supplier).toLowerCase()}">
+              <td style="font-weight:500">${i.name}</td><td>${i.category||'-'}</td>
+              <td style="font-family:var(--font-cond);font-size:15px;font-weight:600">${i.quantity}</td>
+              <td>${i.min_stock}</td><td>${fmt(i.unit_cost)}</td><td>${i.supplier||'-'}</td>
+              <td><span class="badge ${s[0]}">${s[1]}</span></td>
+              <td><button class="btn" onclick='openEditItem(${JSON.stringify(i).replace(/'/g,"&apos;")})' style="padding:4px 10px;font-size:11px">Edit</button></td>
+            </tr>`;
+          }).join(''):'<tr><td colspan="8"><div class="empty-state"><p>No items yet</p></div></td></tr>'}
+        </tbody></table></div></div>`;
+}
+
+function filterTable(q,id){document.querySelectorAll(`#${id} tr[data-search]`).forEach(r=>{r.style.display=r.dataset.search.includes(q.toLowerCase())?'':'none'})}
+
+function itemForm(i={}){return`
+  <div class="form-group"><label class="form-label">Item Name *</label><input class="form-input" id="iName" value="${i.name||''}" placeholder="e.g. Shuttlecocks (tube)"/></div>
+  <div class="grid-2">
+    <div class="form-group"><label class="form-label">Category</label>
+      <select class="form-input" id="iCat">${['','Shuttlecocks','Rackets','Strings & Grips','Shoes','Apparel','Court Equipment','Other'].map(c=>`<option ${i.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
+    <div class="form-group"><label class="form-label">Quantity</label><input class="form-input" id="iQty" type="number" value="${i.quantity||0}" min="0"/></div>
+    <div class="form-group"><label class="form-label">Min Stock Alert</label><input class="form-input" id="iMin" type="number" value="${i.min_stock||5}" min="0"/></div>
+    <div class="form-group"><label class="form-label">Unit Cost (AED)</label><input class="form-input" id="iCost" type="number" value="${i.unit_cost||0}" step="0.01" min="0"/></div>
+  </div>
+  <div class="form-group"><label class="form-label">Supplier</label><input class="form-input" id="iSup" value="${i.supplier||''}" placeholder="Supplier name"/></div>
+  <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="iNotes" value="${i.notes||''}"/></div>`}
+
+function openAddItem(){
+  showModal('ADD ITEM',itemForm(),async()=>{
+    const name=v('iName');if(!name)return alert('Name required');
+    const{error}=await sb.from('wlf_inventory').insert({name,category:v('iCat'),quantity:iv('iQty'),min_stock:iv('iMin'),unit_cost:fv('iCost'),supplier:v('iSup'),notes:v('iNotes')});
+    if(error)return alert(error.message);closeModal();renderInventory();
+  },'Save Item');
+}
+function openEditItem(i){
+  showModal('EDIT ITEM',itemForm(i)+`<div class="divider"></div><button class="btn danger" onclick="deleteItem('${i.id}')" style="width:100%;justify-content:center">Delete Item</button>`,async()=>{
+    const{error}=await sb.from('wlf_inventory').update({name:v('iName'),category:v('iCat'),quantity:iv('iQty'),min_stock:iv('iMin'),unit_cost:fv('iCost'),supplier:v('iSup'),notes:v('iNotes')}).eq('id',i.id);
+    if(error)return alert(error.message);closeModal();renderInventory();
+  },'Save Changes');
+}
+async function deleteItem(id){if(!confirm('Delete item?'))return;await sb.from('wlf_inventory').delete().eq('id',id);closeModal();renderInventory()}
+
+// ── ACCOUNTING ──
+async function renderAccounting(){
+  document.getElementById('pageTitle').textContent='ACCOUNTING';
+  document.getElementById('topbarActions').innerHTML=`<button class="btn" onclick="openAddTx('expense')">+ Expense</button><button class="btn primary" onclick="openAddTx('income')">+ Income</button>`;
+  document.getElementById('content').innerHTML='<div class="loading">Loading...</div>';
+  const {data}=await sb.from('wlf_transactions').select('*').order('date',{ascending:false});
+  const txs=data||[];
+  const income=txs.filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount),0);
+  const expense=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+Number(t.amount),0);
+  document.getElementById('content').innerHTML=`
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat-card green"><div class="stat-label">Total Income</div><div class="stat-value" style="font-size:20px">${fmt(income)}</div></div>
+      <div class="stat-card red"><div class="stat-label">Total Expenses</div><div class="stat-value" style="font-size:20px">${fmt(expense)}</div></div>
+      <div class="stat-card ${income-expense>=0?'green':'red'}"><div class="stat-label">Net Balance</div><div class="stat-value" style="font-size:20px">${fmt(income-expense)}</div></div>
+    </div>
+    <div class="full-width">
+      <div class="section-header"><div class="section-title">${txs.length} Transactions</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select class="form-input" style="width:140px" onchange="filterTx(this.value)"><option value="">All types</option><option value="income">Income</option><option value="expense">Expense</option></select>
+          <input class="form-input" placeholder="Search..." style="width:160px" oninput="filterTxSearch(this.value)"/>
+        </div></div>
+      <div class="table-wrap"><table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Receipt</th><th>Amount</th><th></th></tr></thead>
+        <tbody id="txTbody">
+          ${txs.length?txs.map(t=>`<tr class="tx-${t.type}" data-type="${t.type}" data-search="${(t.description+t.category+t.notes).toLowerCase()}">
+            <td style="color:var(--muted);font-size:12px">${fmtDate(t.date)}</td>
+            <td style="font-weight:500">${t.description||'-'}</td><td>${t.category||'-'}</td>
+            <td><span class="badge ${t.type==='income'?'green':'red'}">${t.type}</span></td>
+            <td>${t.receipt_url?`<a href="${t.receipt_url}" target="_blank" style="color:var(--blue);font-size:12px">View</a>`:'<span style="color:var(--dim)">—</span>'}</td>
+            <td class="amount" style="font-family:var(--font-cond);font-size:15px;font-weight:600">${t.type==='expense'?'-':''}${fmt(t.amount)}</td>
+            <td><button class="btn danger" onclick="deleteTx('${t.id}')" style="padding:4px 8px;font-size:11px">Del</button></td>
+          </tr>`).join(''):'<tr><td colspan="7"><div class="empty-state"><p>No transactions yet</p></div></td></tr>'}
+        </tbody></table></div></div>`;
+}
+function filterTx(t){document.querySelectorAll('#txTbody tr[data-type]').forEach(r=>{r.style.display=(!t||r.dataset.type===t)?'':'none'})}
+function filterTxSearch(q){document.querySelectorAll('#txTbody tr[data-search]').forEach(r=>{r.style.display=r.dataset.search.includes(q.toLowerCase())?'':'none'})}
+
+function openAddTx(dt){
+  showModal('ADD TRANSACTION',`
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">Type</label>
+        <select class="form-input" id="tType"><option value="income" ${dt==='income'?'selected':''}>Income</option><option value="expense" ${dt==='expense'?'selected':''}>Expense</option></select></div>
+      <div class="form-group"><label class="form-label">Amount (AED) *</label><input class="form-input" id="tAmt" type="number" step="0.01" min="0" placeholder="0.00"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Description *</label><input class="form-input" id="tDesc" placeholder="e.g. Monthly membership fee"/></div>
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">Category</label>
+        <select class="form-input" id="tCat">${['','Membership Fees','Court Booking','Tournament Entry','Sponsorship','Equipment Purchase','Venue Rent','Coaching Fees','Utilities','Other'].map(c=>`<option>${c}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Date</label><input class="form-input" id="tDate" type="date" value="${new Date().toISOString().split('T')[0]}"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Receipt URL (optional)</label><input class="form-input" id="tReceipt" placeholder="https://..."/></div>
+    <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="tNotes" placeholder="Optional"/></div>
+  `,async()=>{
+    const desc=v('tDesc'),amt=fv('tAmt');if(!desc||!amt)return alert('Description and amount required');
+    const{error}=await sb.from('wlf_transactions').insert({type:v('tType'),amount:amt,description:desc,category:v('tCat'),date:v('tDate'),receipt_url:v('tReceipt'),notes:v('tNotes')});
+    if(error)return alert(error.message);closeModal();renderAccounting();
+  },'Save Transaction');
+}
+async function deleteTx(id){if(!confirm('Delete transaction?'))return;await sb.from('wlf_transactions').delete().eq('id',id);renderAccounting()}
+
+// ── MEMBERS ──
+async function renderMembers(){
+  document.getElementById('pageTitle').textContent='MEMBERS';
+  document.getElementById('topbarActions').innerHTML=`<button class="btn primary" onclick="openAddMember()">+ Add Member</button>`;
+  document.getElementById('content').innerHTML='<div class="loading">Loading...</div>';
+  const {data}=await sb.from('wlf_members').select('*').order('name');
+  const members=data||[];
+  document.getElementById('content').innerHTML=`
+    <div class="full-width">
+      <div class="section-header"><div class="section-title">${members.length} Members</div>
+        <input class="form-input" placeholder="Search..." style="width:200px" oninput="filterTable(this.value,'mTbody')"/></div>
+      <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Joined</th><th></th></tr></thead>
+        <tbody id="mTbody">
+          ${members.length?members.map(m=>`<tr data-search="${(m.name+m.email+m.phone).toLowerCase()}">
+            <td style="font-weight:500">${m.name}</td><td style="color:var(--muted)">${m.email||'-'}</td>
+            <td style="color:var(--muted)">${m.phone||'-'}</td>
+            <td><span class="badge ${m.status==='active'?'green':m.status==='inactive'?'gray':'amber'}">${m.status}</span></td>
+            <td style="color:var(--muted);font-size:12px">${fmtDate(m.joined_at)}</td>
+            <td><button class="btn" onclick='openEditMember(${JSON.stringify(m).replace(/'/g,"&apos;")})' style="padding:4px 10px;font-size:11px">Edit</button></td>
+          </tr>`).join(''):'<tr><td colspan="6"><div class="empty-state"><p>No members yet</p></div></td></tr>'}
+        </tbody></table></div></div>`;
+}
+function memberForm(m={}){return`
+  <div class="form-group"><label class="form-label">Full Name *</label><input class="form-input" id="mName" value="${m.name||''}" placeholder="Ahmed Al Rashid"/></div>
+  <div class="grid-2">
+    <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="mEmail" type="email" value="${m.email||''}"/></div>
+    <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="mPhone" value="${m.phone||''}"/></div>
+    <div class="form-group"><label class="form-label">Status</label>
+      <select class="form-input" id="mStatus">${['active','inactive','trial'].map(s=>`<option value="${s}" ${m.status===s?'selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="form-group"><label class="form-label">Joined Date</label><input class="form-input" id="mJoined" type="date" value="${m.joined_at||new Date().toISOString().split('T')[0]}"/></div>
+  </div>
+  <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="mNotes" value="${m.notes||''}"/></div>`}
+
+function openAddMember(){
+  showModal('ADD MEMBER',memberForm(),async()=>{
+    const name=v('mName');if(!name)return alert('Name required');
+    const{error}=await sb.from('wlf_members').insert({name,email:v('mEmail'),phone:v('mPhone'),status:v('mStatus'),joined_at:v('mJoined'),notes:v('mNotes')});
+    if(error)return alert(error.message);closeModal();renderMembers();
+  },'Save Member');
+}
+function openEditMember(m){
+  showModal('EDIT MEMBER',memberForm(m)+`<div class="divider"></div><button class="btn danger" onclick="deleteMember('${m.id}')" style="width:100%;justify-content:center">Delete Member</button>`,async()=>{
+    const{error}=await sb.from('wlf_members').update({name:v('mName'),email:v('mEmail'),phone:v('mPhone'),status:v('mStatus'),joined_at:v('mJoined'),notes:v('mNotes')}).eq('id',m.id);
+    if(error)return alert(error.message);closeModal();renderMembers();
+  },'Save Changes');
+}
+async function deleteMember(id){if(!confirm('Delete member?'))return;await sb.from('wlf_members').delete().eq('id',id);closeModal();renderMembers()}
+
+// ── COURT SESSIONS ──
+async function renderSessions(){
+  document.getElementById('pageTitle').textContent='COURT SESSIONS';
+  document.getElementById('topbarActions').innerHTML=`<button class="btn primary" onclick="openAddSession()">+ Add Session</button>`;
+  document.getElementById('content').innerHTML='<div class="loading">Loading...</div>';
+  const {data}=await sb.from('wlf_sessions').select('*').order('date',{ascending:false});
+  const sessions=data||[];
+  const totalCost=sessions.reduce((s,x)=>s+Number(x.cost||0),0);
+  const open=sessions.filter(s=>s.status==='open').length;
+  document.getElementById('content').innerHTML=`
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat-card"><div class="stat-label">Total Sessions</div><div class="stat-value">${sessions.length}</div></div>
+      <div class="stat-card green"><div class="stat-label">Open Sessions</div><div class="stat-value">${open}</div></div>
+      <div class="stat-card amber"><div class="stat-label">Total Court Cost</div><div class="stat-value" style="font-size:20px">${fmt(totalCost)}</div></div>
+    </div>
+    <div class="full-width">
+      <div class="section-header"><div class="section-title">${sessions.length} Sessions</div>
+        <div style="display:flex;gap:8px">
+          <select class="form-input" style="width:130px" onchange="filterSessionStatus(this.value)">
+            <option value="">All</option><option value="open">Open</option><option value="closed">Closed</option><option value="cancelled">Cancelled</option>
+          </select>
+          <input class="form-input" placeholder="Search..." style="width:160px" oninput="filterTable(this.value,'sTbody')"/>
+        </div></div>
+      <div class="table-wrap"><table><thead><tr><th>Title</th><th>Court</th><th>Date</th><th>Time</th><th>Attendees</th><th>Cost</th><th>Status</th><th></th></tr></thead>
+        <tbody id="sTbody">
+          ${sessions.length?sessions.map(s=>`<tr data-status="${s.status}" data-search="${(s.title+s.court+s.notes).toLowerCase()}">
+            <td style="font-weight:500">${s.title}</td><td>${s.court||'-'}</td>
+            <td style="font-size:12px;color:var(--muted)">${fmtDate(s.date)}</td>
+            <td style="font-size:12px;color:var(--muted)">${s.start_time||''}${s.end_time?' – '+s.end_time:''}</td>
+            <td style="font-family:var(--font-cond);font-size:15px">${s.attendee_count||0}</td>
+            <td>${fmt(s.cost)}</td>
+            <td><span class="badge ${s.status==='open'?'green':s.status==='cancelled'?'red':'gray'}">${s.status}</span></td>
+            <td><button class="btn" onclick='openEditSession(${JSON.stringify(s).replace(/'/g,"&apos;")})' style="padding:4px 10px;font-size:11px">Edit</button></td>
+          </tr>`).join(''):'<tr><td colspan="8"><div class="empty-state"><p>No sessions yet</p></div></td></tr>'}
+        </tbody></table></div></div>`;
+}
+function filterSessionStatus(val){document.querySelectorAll('#sTbody tr[data-status]').forEach(r=>{r.style.display=(!val||r.dataset.status===val)?'':'none'})}
+function sessionForm(s={}){return`
+  <div class="form-group"><label class="form-label">Session Title *</label><input class="form-input" id="sTitle" value="${s.title||''}" placeholder="e.g. Tuesday Evening Session"/></div>
+  <div class="grid-2">
+    <div class="form-group"><label class="form-label">Court / Venue</label><input class="form-input" id="sCourt" value="${s.court||''}" placeholder="e.g. Court 3, Al Nasr"/></div>
+    <div class="form-group"><label class="form-label">Date</label><input class="form-input" id="sDate" type="date" value="${s.date||new Date().toISOString().split('T')[0]}"/></div>
+    <div class="form-group"><label class="form-label">Start Time</label><input class="form-input" id="sStart" type="time" value="${s.start_time||''}"/></div>
+    <div class="form-group"><label class="form-label">End Time</label><input class="form-input" id="sEnd" type="time" value="${s.end_time||''}"/></div>
+    <div class="form-group"><label class="form-label">Attendees</label><input class="form-input" id="sAttendees" type="number" min="0" value="${s.attendee_count||0}"/></div>
+    <div class="form-group"><label class="form-label">Court Cost (AED)</label><input class="form-input" id="sCost" type="number" step="0.01" min="0" value="${s.cost||0}"/></div>
+    <div class="form-group"><label class="form-label">Status</label>
+      <select class="form-input" id="sStatus">${['open','closed','cancelled'].map(x=>`<option value="${x}" ${s.status===x?'selected':''}>${x}</option>`).join('')}</select></div>
+  </div>
+  <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="sNotes">${s.notes||''}</textarea></div>`}
+function openAddSession(){
+  showModal('ADD SESSION',sessionForm(),async()=>{
+    const title=v('sTitle');if(!title)return alert('Title required');
+    const{error}=await sb.from('wlf_sessions').insert({title,court:v('sCourt'),date:v('sDate'),start_time:v('sStart'),end_time:v('sEnd'),attendee_count:iv('sAttendees'),cost:fv('sCost'),status:v('sStatus'),notes:v('sNotes')});
+    if(error)return alert(error.message);closeModal();renderSessions();
+  },'Save Session');
+}
+function openEditSession(s){
+  showModal('EDIT SESSION',sessionForm(s)+`<div class="divider"></div><button class="btn danger" onclick="deleteSession('${s.id}')" style="width:100%;justify-content:center">Delete Session</button>`,async()=>{
+    const{error}=await sb.from('wlf_sessions').update({title:v('sTitle'),court:v('sCourt'),date:v('sDate'),start_time:v('sStart'),end_time:v('sEnd'),attendee_count:iv('sAttendees'),cost:fv('sCost'),status:v('sStatus'),notes:v('sNotes')}).eq('id',s.id);
+    if(error)return alert(error.message);closeModal();renderSessions();
+  },'Save Changes');
+}
+async function deleteSession(id){if(!confirm('Delete session?'))return;await sb.from('wlf_sessions').delete().eq('id',id);closeModal();renderSessions()}
+
+// ── RECEIPTS ──
+async function renderReceipts(){
+  document.getElementById('pageTitle').textContent='RECEIPTS';
+  document.getElementById('topbarActions').innerHTML=`<button class="btn primary" onclick="openAddReceipt()">+ Add Receipt</button>`;
+  document.getElementById('content').innerHTML='<div class="loading">Loading...</div>';
+  const {data}=await sb.from('wlf_receipts').select('*').order('date',{ascending:false});
+  const receipts=data||[];
+  const total=receipts.reduce((s,r)=>s+Number(r.amount||0),0);
+  document.getElementById('content').innerHTML=`
+    <div class="stats-grid" style="grid-template-columns:repeat(2,1fr)">
+      <div class="stat-card"><div class="stat-label">Total Receipts</div><div class="stat-value">${receipts.length}</div></div>
+      <div class="stat-card amber"><div class="stat-label">Total Amount</div><div class="stat-value" style="font-size:20px">${fmt(total)}</div></div>
+    </div>
+    <div class="full-width">
+      <div class="section-header"><div class="section-title">${receipts.length} Receipts</div>
+        <input class="form-input" placeholder="Search..." style="width:200px" oninput="filterTable(this.value,'rTbody')"/></div>
+      <div class="table-wrap"><table><thead><tr><th>Image</th><th>Description</th><th>Vendor</th><th>Date</th><th>Amount</th><th>Notes</th><th></th></tr></thead>
+        <tbody id="rTbody">
+          ${receipts.length?receipts.map(r=>`<tr data-search="${(r.description+r.vendor+r.notes).toLowerCase()}">
+            <td>${r.image_data?`<img src="${r.image_data}" class="receipt-thumb" style="cursor:pointer" onclick="window.open('${r.image_data}','_blank')"/>`:r.image_url?`<img src="${r.image_url}" class="receipt-thumb" onclick="window.open('${r.image_url}','_blank')" style="cursor:pointer"/>`:'<div class="receipt-placeholder">📄</div>'}</td>
+            <td style="font-weight:500">${r.description||'-'}</td><td>${r.vendor||'-'}</td>
+            <td style="font-size:12px;color:var(--muted)">${fmtDate(r.date)}</td>
+            <td style="font-family:var(--font-cond);font-size:15px;font-weight:600">${fmt(r.amount)}</td>
+            <td style="color:var(--muted);font-size:12px">${r.notes||'-'}</td>
+            <td><button class="btn danger" onclick="deleteReceipt('${r.id}')" style="padding:4px 8px;font-size:11px">Del</button></td>
+          </tr>`).join(''):'<tr><td colspan="7"><div class="empty-state"><p>No receipts yet</p></div></td></tr>'}
+        </tbody></table></div></div>`;
+}
+function openAddReceipt(){
+  showModal('ADD RECEIPT',`
+    <div class="form-group"><label class="form-label">Upload Receipt Image</label>
+      <div class="upload-area" onclick="document.getElementById('rFile').click()">
+        <input type="file" id="rFile" accept="image/*" style="display:none" onchange="previewReceipt(this)"/>
+        <div id="rPreview" style="color:var(--dim);font-size:13px">Click to upload image (JPG, PNG, etc.)</div>
+      </div></div>
+    <div class="form-group"><label class="form-label">Description</label><input class="form-input" id="rDesc" placeholder="e.g. Shuttlecock purchase"/></div>
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">Vendor</label><input class="form-input" id="rVendor" placeholder="e.g. Sports Direct"/></div>
+      <div class="form-group"><label class="form-label">Amount (AED)</label><input class="form-input" id="rAmt" type="number" step="0.01" min="0" placeholder="0.00"/></div>
+      <div class="form-group"><label class="form-label">Date</label><input class="form-input" id="rDate" type="date" value="${new Date().toISOString().split('T')[0]}"/></div>
+      <div class="form-group"><label class="form-label">Image URL (optional)</label><input class="form-input" id="rUrl" placeholder="https://..."/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="rNotes" placeholder="Optional"/></div>
+  `,async()=>{
+    const{error}=await sb.from('wlf_receipts').insert({description:v('rDesc'),vendor:v('rVendor'),amount:fv('rAmt'),date:v('rDate'),image_url:v('rUrl'),notes:v('rNotes'),image_data:window._receiptB64||null});
+    window._receiptB64=null;
+    if(error)return alert(error.message);closeModal();renderReceipts();
+  },'Save Receipt');
+}
+function previewReceipt(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{window._receiptB64=e.target.result;document.getElementById('rPreview').innerHTML=`<img src="${e.target.result}" style="max-height:120px;border-radius:4px;margin-top:8px"/>`};
+  reader.readAsDataURL(file);
+}
+async function deleteReceipt(id){if(!confirm('Delete receipt?'))return;await sb.from('wlf_receipts').delete().eq('id',id);renderReceipts()}
+
+// ── MONTHLY REPORTS ──
+async function renderReports(){
+  document.getElementById('pageTitle').textContent='MONTHLY REPORTS';
+  document.getElementById('topbarActions').innerHTML='';
+  const now=new Date();
+  const defMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  document.getElementById('content').innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+      <label class="form-label" style="margin:0;white-space:nowrap">Select Month</label>
+      <input class="form-input" id="reportMonth" type="month" value="${defMonth}" style="width:180px"/>
+      <button class="btn primary" onclick="loadReport()">Generate Report</button>
+    </div>
+    <div id="reportContent"><div class="loading">Select a month and click Generate Report</div></div>`;
+  loadReport();
+}
+
+async function loadReport(){
+  const month=document.getElementById('reportMonth').value;
+  if(!month)return;
+  const[year,mo]=month.split('-');
+  const start=`${year}-${mo}-01`;
+  const end=`${year}-${mo}-${new Date(year,mo,0).getDate()}`;
+  document.getElementById('reportContent').innerHTML='<div class="loading">Generating...</div>';
+  const [{data:txs},{data:inv},{data:sessions},{data:receipts}]=await Promise.all([
+    sb.from('wlf_transactions').select('*').gte('date',start).lte('date',end).order('date'),
+    sb.from('wlf_inventory').select('*'),
+    sb.from('wlf_sessions').select('*').gte('date',start).lte('date',end).order('date'),
+    sb.from('wlf_receipts').select('*').gte('date',start).lte('date',end),
+  ]);
+  const income=(txs||[]).filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount),0);
+  const expense=(txs||[]).filter(t=>t.type==='expense').reduce((s,t)=>s+Number(t.amount),0);
+  const net=income-expense;
+  const lowStock=(inv||[]).filter(i=>i.quantity<=i.min_stock);
+  const mLabel=new Date(year,mo-1).toLocaleString('en',{month:'long',year:'numeric'});
+  const catIncome={},catExpense={};
+  (txs||[]).forEach(t=>{const c=t.category||'Other';if(t.type==='income'){catIncome[c]=(catIncome[c]||0)+Number(t.amount)}else{catExpense[c]=(catExpense[c]||0)+Number(t.amount)}});
+
+  document.getElementById('reportContent').innerHTML=`
+    <div style="border-bottom:2px solid var(--border2);padding-bottom:16px;margin-bottom:20px">
+      <div style="font-family:var(--font-display);font-size:28px;letter-spacing:2px;color:var(--white)">${mLabel.toUpperCase()} REPORT</div>
+      <div style="color:var(--dim);font-size:12px;font-family:var(--font-cond);letter-spacing:1px">WHACK UAE BADMINTON CLUB — LEDGERFLOW</div>
+    </div>
+    <div class="report-grid">
+      <div class="stat-card green"><div class="stat-label">Income</div><div class="stat-value" style="font-size:20px">${fmt(income)}</div><div class="stat-sub">${(txs||[]).filter(t=>t.type==='income').length} transactions</div></div>
+      <div class="stat-card red"><div class="stat-label">Expenses</div><div class="stat-value" style="font-size:20px">${fmt(expense)}</div><div class="stat-sub">${(txs||[]).filter(t=>t.type==='expense').length} transactions</div></div>
+      <div class="stat-card ${net>=0?'green':'red'}"><div class="stat-label">Net</div><div class="stat-value" style="font-size:20px">${fmt(net)}</div><div class="stat-sub">${net>=0?'Surplus':'Deficit'}</div></div>
+    </div>
+    <div class="two-col">
+      <div>
+        <div class="section-header"><div class="section-title">Income by Category</div></div>
+        <div class="table-wrap"><table><thead><tr><th>Category</th><th>Amount</th></tr></thead><tbody>
+          ${Object.keys(catIncome).length?Object.entries(catIncome).sort((a,b)=>b[1]-a[1]).map(([c,a])=>`<tr><td>${c}</td><td style="color:var(--green);font-family:var(--font-cond);font-size:14px;font-weight:600">${fmt(a)}</td></tr>`).join(''):'<tr><td colspan="2"><div class="empty-state" style="padding:16px"><p>No income</p></div></td></tr>'}
+        </tbody></table></div>
+      </div>
+      <div>
+        <div class="section-header"><div class="section-title">Expenses by Category</div></div>
+        <div class="table-wrap"><table><thead><tr><th>Category</th><th>Amount</th></tr></thead><tbody>
+          ${Object.keys(catExpense).length?Object.entries(catExpense).sort((a,b)=>b[1]-a[1]).map(([c,a])=>`<tr><td>${c}</td><td style="color:var(--red);font-family:var(--font-cond);font-size:14px;font-weight:600">${fmt(a)}</td></tr>`).join(''):'<tr><td colspan="2"><div class="empty-state" style="padding:16px"><p>No expenses</p></div></td></tr>'}
+        </tbody></table></div>
+      </div>
+    </div>
+    <div class="two-col">
+      <div>
+        <div class="section-header"><div class="section-title">Sessions This Month (${(sessions||[]).length})</div></div>
+        <div class="table-wrap"><table><thead><tr><th>Title</th><th>Date</th><th>Attendees</th><th>Cost</th></tr></thead><tbody>
+          ${(sessions||[]).length?(sessions||[]).map(s=>`<tr><td style="font-weight:500">${s.title}</td><td style="font-size:12px;color:var(--muted)">${fmtDate(s.date)}</td><td>${s.attendee_count||0}</td><td>${fmt(s.cost)}</td></tr>`).join(''):'<tr><td colspan="4"><div class="empty-state" style="padding:16px"><p>No sessions</p></div></td></tr>'}
+        </tbody></table></div>
+      </div>
+      <div>
+        <div class="section-header"><div class="section-title">Receipts This Month (${(receipts||[]).length})</div></div>
+        <div class="table-wrap"><table><thead><tr><th>Description</th><th>Vendor</th><th>Amount</th></tr></thead><tbody>
+          ${(receipts||[]).length?(receipts||[]).map(r=>`<tr><td>${r.description||'-'}</td><td style="color:var(--muted)">${r.vendor||'-'}</td><td style="font-family:var(--font-cond);font-size:14px">${fmt(r.amount)}</td></tr>`).join(''):'<tr><td colspan="3"><div class="empty-state" style="padding:16px"><p>No receipts</p></div></td></tr>'}
+        </tbody></table></div>
+      </div>
+    </div>
+    ${lowStock.length?`<div class="alert-banner">⚠️ ${lowStock.length} inventory item(s) at or below minimum stock: ${lowStock.map(i=>i.name).join(', ')}</div>`:''}
+    <div class="chart-card">
+      <div class="chart-title">Daily Transaction Flow — ${mLabel}</div>
+      <canvas id="dailyChart" height="120"></canvas>
+    </div>
+    <div class="section-header" style="margin-top:20px"><div class="section-title">All Transactions This Month</div></div>
+    <div class="table-wrap full-width"><table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Amount</th></tr></thead><tbody>
+      ${(txs||[]).length?(txs||[]).map(t=>`<tr class="tx-${t.type}"><td style="font-size:12px;color:var(--muted)">${fmtDate(t.date)}</td><td>${t.description||'-'}</td><td>${t.category||'-'}</td><td><span class="badge ${t.type==='income'?'green':'red'}" style="font-size:10px">${t.type}</span></td><td class="amount" style="font-family:var(--font-cond);font-size:13px">${t.type==='expense'?'-':''}${fmt(t.amount)}</td></tr>`).join(''):'<tr><td colspan="5"><div class="empty-state" style="padding:16px"><p>No transactions this month</p></div></td></tr>'}
+    </tbody></table></div>`;
+
+  const dayMap={};
+  (txs||[]).forEach(t=>{const d=t.date||'';if(!d)return;if(!dayMap[d])dayMap[d]={income:0,expense:0};dayMap[d][t.type]+=Number(t.amount)});
+  const days=Object.keys(dayMap).sort();
+  if(days.length){
+    const ctx=document.getElementById('dailyChart').getContext('2d');
+    new Chart(ctx,{type:'line',data:{labels:days.map(d=>d.split('-')[2]),datasets:[
+      {label:'Income',data:days.map(d=>dayMap[d].income),borderColor:'#4caf7d',backgroundColor:'rgba(76,175,125,0.1)',tension:0.3,fill:true,pointRadius:3},
+      {label:'Expenses',data:days.map(d=>dayMap[d].expense),borderColor:'#e04040',backgroundColor:'rgba(224,64,64,0.1)',tension:0.3,fill:true,pointRadius:3}
+    ]},options:{responsive:true,plugins:{legend:{labels:{color:'#888',font:{size:11}}}},scales:{x:{ticks:{color:'#555'},grid:{color:'#1a1a1a'}},y:{ticks:{color:'#555',callback:val=>'AED '+val.toLocaleString()},grid:{color:'#1a1a1a'}}}}});
+  }
+}
+
+// ── MODAL ──
+function showModal(title,body,onSave,saveLabel='Save'){
+  closeModal();
+  const el=document.createElement('div');el.className='modal-overlay';el.id='modalOverlay';
+  el.innerHTML=`<div class="modal">
+    <div class="modal-header"><div class="modal-title">${title}</div><button class="modal-close" onclick="closeModal()">×</button></div>
+    <div class="modal-body">${body}</div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" id="mSaveBtn">${saveLabel}</button></div>
+  </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click',e=>{if(e.target===el)closeModal()});
+  document.getElementById('mSaveBtn').addEventListener('click',onSave);
+}
+function closeModal(){const e=document.getElementById('modalOverlay');if(e)e.remove();window._receiptB64=null}
+
+// ── HELPERS ──
+function v(id){const el=document.getElementById(id);return el?(el.value||'').trim():''}
+function iv(id){return parseInt(v(id))||0}
+function fv(id){return parseFloat(v(id))||0}
+
+// ── ROUTER ──
+function render(){
+  if(!sb){renderSetup();renderNav();return}
+  const map={dashboard:renderDashboard,inventory:renderInventory,accounting:renderAccounting,members:renderMembers,sessions:renderSessions,receipts:renderReceipts,reports:renderReports};
+  (map[currentPage]||renderDashboard)();renderNav();
+}
+
+// ── BOOT ──
+async function bootApp(){
+  const url=localStorage.getItem('wlf_url'),key=localStorage.getItem('wlf_key');
+  if(url&&key){setStatus(null,'Connecting...');await initSupabase(url,key)}
+  else{renderSetup();renderNav()}
+}
+if(checkAuth()) bootApp();
+</script>
+</body>
+</html>
