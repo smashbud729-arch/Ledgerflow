@@ -428,7 +428,7 @@ ALTER TABLE wlf_transactions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE wlf_members DISABLE ROW LEVEL SECURITY;
 ALTER TABLE wlf_sessions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE wlf_receipts DISABLE ROW LEVEL SECURITY;
-CREATE TABLE IF NOT EXISTS wlf_uniforms (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, uniform_item text NOT NULL, size text, jersey_number text, payment_status text DEFAULT 'Unpaid', delivery_status text DEFAULT 'Pending', comments text, created_at timestamptz DEFAULT now());
+CREATE TABLE IF NOT EXISTS wlf_uniforms (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, member_name text, uniform_item text NOT NULL, size text, jersey_number text, payment_status text DEFAULT 'Unpaid', delivery_status text DEFAULT 'Pending', comments text, created_at timestamptz DEFAULT now());
 ALTER TABLE wlf_uniforms DISABLE ROW LEVEL SECURITY;</code></div>
         <button class="btn primary" onclick="handleConnect()" style="width:100%;justify-content:center;padding:13px;font-size:15px">Connect to Supabase</button>
         <div id="setupError"></div>
@@ -974,8 +974,8 @@ async function renderUniforms(){
         <div class="data-card" data-payment="${i.payment_status}" data-delivery="${i.delivery_status}">
           <div class="data-card-header">
             <div>
-              <div class="data-card-title">${i.uniform_item}</div>
-              <div style="font-family:var(--font-cond);font-size:12px;color:var(--muted);margin-top:2px">Size: ${i.size||'—'} ${i.jersey_number?'· #'+i.jersey_number:''}</div>
+              <div class="data-card-title">${i.member_name||'Unknown'}</div>
+              <div style="font-family:var(--font-cond);font-size:12px;color:var(--muted);margin-top:2px">${i.uniform_item} · Size: ${i.size||'—'} ${i.jersey_number?'· #'+i.jersey_number:''}</div>
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
               <span class="badge ${i.payment_status==='Paid'?'green':'red'}">${i.payment_status}</span>
@@ -987,17 +987,18 @@ async function renderUniforms(){
         </div>`).join(''):'<div class="empty-state"><p>No uniform records yet</p></div>'}
     </div>
     <div class="table-wrap desktop-only">
-      <table><thead><tr><th>Uniform Item</th><th>Size</th><th>Jersey #</th><th>Payment</th><th>Delivery</th><th>Comments</th><th></th></tr></thead>
+      <table><thead><tr><th>Name</th><th>Uniform Item</th><th>Size</th><th>Jersey #</th><th>Payment</th><th>Delivery</th><th>Comments</th><th></th></tr></thead>
       <tbody id="uniTbody">
         ${items.length?items.map(i=>`<tr data-payment="${i.payment_status}" data-delivery="${i.delivery_status}">
-          <td style="font-weight:500">${i.uniform_item}</td>
+          <td style="font-weight:500">${i.member_name||'—'}</td>
+          <td>${i.uniform_item}</td>
           <td>${i.size||'—'}</td>
           <td style="font-family:var(--font-cond);font-size:14px">${i.jersey_number?'#'+i.jersey_number:'—'}</td>
           <td><span class="badge ${i.payment_status==='Paid'?'green':'red'}">${i.payment_status}</span></td>
           <td><span class="badge ${i.delivery_status==='Received'?'blue':'amber'}">${i.delivery_status}</span></td>
           <td style="color:var(--muted);font-size:12px;max-width:200px">${i.comments||'—'}</td>
           <td><button class="btn" onclick='openEditUniform(${JSON.stringify(i).replace(/'/g,"&apos;")})' style="padding:4px 10px;font-size:11px">Edit</button></td>
-        </tr>`).join(''):'<tr><td colspan="7"><div class="empty-state"><p>No records yet</p></div></td></tr>'}
+        </tr>`).join(''):'<tr><td colspan="8"><div class="empty-state"><p>No records yet</p></div></td></tr>'}
       </tbody></table></div>`;
 }
 
@@ -1014,6 +1015,8 @@ function filterUni(type,val){
 }
 
 function uniformForm(i={}){return`
+  <div class="form-group"><label class="form-label">Player Name *</label>
+    <input class="form-input" id="uName" value="${i.member_name||''}" placeholder="e.g. Ahmed Al Rashid"/></div>
   <div class="form-group"><label class="form-label">Uniform Item *</label>
     <select class="form-input" id="uItem">
       ${['','Jersey','Shorts','Socks','Jacket','Track Pants','Training Top','Full Kit','Cap','Bag','Other'].map(x=>`<option value="${x}" ${i.uniform_item===x?'selected':''}>${x||'Select item...'}</option>`).join('')}
@@ -1042,7 +1045,7 @@ function uniformForm(i={}){return`
 function openAddUniform(){showModal('ADD UNIFORM',uniformForm(),async()=>{
   const item=v('uItem');if(!item)return alert('Please select a uniform item');
   const{error}=await sb.from('wlf_uniforms').insert({
-    uniform_item:item,size:v('uSize'),jersey_number:v('uJersey'),
+    member_name:v('uName'),uniform_item:item,size:v('uSize'),jersey_number:v('uJersey'),
     payment_status:v('uPayment'),delivery_status:v('uDelivery'),comments:v('uComments')
   });
   if(error)return alert(error.message);closeModal();renderUniforms();
@@ -1050,7 +1053,7 @@ function openAddUniform(){showModal('ADD UNIFORM',uniformForm(),async()=>{
 
 function openEditUniform(i){showModal('EDIT UNIFORM',uniformForm(i)+`<div class="divider"></div><button class="btn danger" onclick="deleteUniform('${i.id}')" style="width:100%;justify-content:center">Delete Record</button>`,async()=>{
   const{error}=await sb.from('wlf_uniforms').update({
-    uniform_item:v('uItem'),size:v('uSize'),jersey_number:v('uJersey'),
+    member_name:v('uName'),uniform_item:v('uItem'),size:v('uSize'),jersey_number:v('uJersey'),
     payment_status:v('uPayment'),delivery_status:v('uDelivery'),comments:v('uComments')
   }).eq('id',i.id);
   if(error)return alert(error.message);closeModal();renderUniforms();
