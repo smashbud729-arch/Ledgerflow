@@ -974,10 +974,13 @@ async function installPWA(){if(!deferredPrompt)return;deferredPrompt.prompt();co
 window.addEventListener('appinstalled',()=>{const b=document.getElementById('installBanner');if(b)b.remove()});
 
 // ── BOOT ──
+const SUPABASE_URL='https://ccbzgwkdbnnfwfgjzycj.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjYnpnd2tkYm5uZndmZ2p6eWNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1Mjc0MjcsImV4cCI6MjA5NTEwMzQyN30.fldakQmQz18cA17xBHzSDnMq4cg5Px8lor5Elfn_ESA';
+
 async function bootApp(){
-  const url=localStorage.getItem('wlf_url'),key=localStorage.getItem('wlf_key');
-  if(url&&key){setStatus(null,'Connecting...');await initSupabase(url,key)}
-  else{renderSetup();renderNav()}
+  // Always use hardcoded credentials — no setup screen needed
+  setStatus(null,'Connecting...');
+  await initSupabase(SUPABASE_URL, SUPABASE_KEY);
 }
 if(checkAuth())bootApp();
 </script>
