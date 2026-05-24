@@ -682,49 +682,108 @@ async function renderAccounting(){
   document.getElementById('pageTitle').textContent='ACCOUNTING';
   document.getElementById('topbarActions').innerHTML=`
     <button class="btn" onclick="openAddTx('expense')" style="padding:7px 10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 4v16m8-8H4"/></svg><span class="btn-label"> Expense</span></button>
-    <button class="btn primary" onclick="openAddTx('income')" style="padding:7px 10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 4v16m8-8H4"/></svg><span class="btn-label"> Income</span></button>`;
+    <button class="btn primary" onclick="openAddTx('income')" style="padding:7px 10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 4v16m8-8H4"/></svg><span class="btn-label"> Income</span></button>
+    <button class="btn" onclick="exportCSV(window._txData||[],'transactions.csv')" style="padding:7px 10px" title="Export CSV"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg></button>`;
   document.getElementById('content').innerHTML='<div class="loading">Loading...</div>';
   const {data}=await sb.from('wlf_transactions').select('*').order('date',{ascending:false});
-  const txs=data||[];
-  const income=txs.filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount),0);
-  const expense=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+Number(t.amount),0);
+  const txs=data||[];window._txData=txs;
+  const incTxs=txs.filter(t=>t.type==='income');
+  const expTxs=txs.filter(t=>t.type==='expense');
+  const income=incTxs.reduce((s,t)=>s+Number(t.amount),0);
+  const expense=expTxs.reduce((s,t)=>s+Number(t.amount),0);
   const netBal=income-expense;
   const negWarn=netBal<0?`<div class="alert-banner">⚠️ Club balance is negative: <strong>${fmt(netBal)}</strong>. Review expenses.</div>`:'';
+  const txCard=(t)=>`
+    <div class="data-card tx-card-${t.type}" data-type="${t.type}" data-id="${t.id}">
+      <div class="data-card-header">
+        <div>
+          <div class="data-card-title" style="font-size:13px">${t.description||'—'}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">${t.category||'—'} · ${fmtDate(t.date)}</div>
+        </div>
+        <span class="amount-pill" style="color:${t.type==='income'?'var(--green)':'var(--red)'};font-size:14px">${t.type==='income'?'+':'-'}${fmt(t.amount)}</span>
+      </div>
+      <div class="data-card-actions"><button class="btn danger" onclick="deleteTx('${t.id}')" style="font-size:11px;padding:4px 10px">Delete</button></div>
+    </div>`;
   document.getElementById('content').innerHTML=`
-    ${negWarn}<div class="stats-grid cols3">
-      <div class="stat-card green"><div class="stat-label">Income</div><div class="stat-value" style="font-size:15px">${fmt(income)}</div></div>
-      <div class="stat-card red"><div class="stat-label">Expenses</div><div class="stat-value" style="font-size:15px">${fmt(expense)}</div></div>
-      <div class="stat-card ${income-expense>=0?'green':'red'}"><div class="stat-label">Balance</div><div class="stat-value" style="font-size:15px">${fmt(income-expense)}</div></div>
+    ${negWarn}
+    <div class="stats-grid cols3">
+      <div class="stat-card green"><div class="stat-label">Income</div><div class="stat-value" style="font-size:15px">${fmt(income)}</div><div class="stat-sub">${incTxs.length} entries</div></div>
+      <div class="stat-card red"><div class="stat-label">Expenses</div><div class="stat-value" style="font-size:15px">${fmt(expense)}</div><div class="stat-sub">${expTxs.length} entries</div></div>
+      <div class="stat-card ${netBal>=0?'green':'red'}"><div class="stat-label">Balance</div><div class="stat-value" style="font-size:15px">${fmt(netBal)}</div></div>
     </div>
-    <div class="section-header"><div class="section-title">${txs.length} Transactions</div>
-      <select class="form-input" style="width:110px;padding:8px 10px;font-size:12px" onchange="filterTxType(this.value)"><option value="">All</option><option value="income">Income</option><option value="expense">Expense</option></select>
+
+    <!-- MOBILE: tabbed view -->
+    <div class="card-list" style="display:flex;flex-direction:column">
+      <div style="display:flex;gap:0;margin-bottom:12px;background:var(--card2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+        <button id="tab-all" onclick="setTxTab('all')" style="flex:1;padding:9px;font-family:var(--font-cond);font-size:12px;letter-spacing:1px;border:none;background:var(--white);color:var(--black);cursor:pointer;transition:all .15s">ALL</button>
+        <button id="tab-income" onclick="setTxTab('income')" style="flex:1;padding:9px;font-family:var(--font-cond);font-size:12px;letter-spacing:1px;border:none;background:transparent;color:var(--green);cursor:pointer;transition:all .15s">INCOME</button>
+        <button id="tab-expense" onclick="setTxTab('expense')" style="flex:1;padding:9px;font-family:var(--font-cond);font-size:12px;letter-spacing:1px;border:none;background:transparent;color:var(--red);cursor:pointer;transition:all .15s">EXPENSES</button>
+      </div>
+      <div id="txCards">
+        ${txs.length?txs.map(t=>txCard(t)).join(''):'<div class="empty-state"><p>No transactions yet</p><button class="btn primary" onclick="openAddTx('income')" style="margin-top:10px">Add First Transaction</button></div>'}
+      </div>
     </div>
-    <div class="card-list" id="txCards">
-      ${txs.length?txs.map(t=>`
-        <div class="data-card" data-type="${t.type}">
-          <div class="data-card-header">
-            <div class="data-card-title">${t.description||'—'}</div>
-            <span class="amount-pill" style="color:${t.type==='income'?'var(--green)':'var(--red)'}">${t.type==='income'?'+':'-'}${fmt(t.amount)}</span>
-          </div>
-          <div class="data-card-meta"><span class="badge ${t.type==='income'?'green':'red'}">${t.type}</span><span>${t.category||'—'}</span><span>${fmtDate(t.date)}</span></div>
-          <div class="data-card-actions"><button class="btn danger" onclick="deleteTx('${t.id}')" style="font-size:12px;padding:5px 12px">Delete</button></div>
-        </div>`).join(''):'<div class="empty-state"><p>No transactions yet</p></div>'}
-    </div>
-    <div class="table-wrap desktop-only">
-      <table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Amount</th><th></th></tr></thead>
-      <tbody id="txTbody">
-        ${txs.length?txs.map(t=>`<tr class="tx-${t.type}" data-type="${t.type}">
-          <td style="color:var(--muted);font-size:12px">${fmtDate(t.date)}</td>
-          <td style="font-weight:500">${t.description||'—'}</td><td>${t.category||'—'}</td>
-          <td><span class="badge ${t.type==='income'?'green':'red'}">${t.type}</span></td>
-          <td class="amount" style="font-family:var(--font-cond);font-size:15px;font-weight:600">${t.type==='expense'?'-':''}${fmt(t.amount)}</td>
-          <td><button class="btn danger" onclick="deleteTx('${t.id}')" style="padding:4px 8px;font-size:11px">Del</button></td>
-        </tr>`).join(''):'<tr><td colspan="6"><div class="empty-state"><p>No transactions yet</p></div></td></tr>'}
-      </tbody></table></div>`;
+
+    <!-- DESKTOP: two-column split -->
+    <div class="desktop-only" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
+      <!-- INCOME COLUMN -->
+      <div>
+        <div class="section-header">
+          <div class="section-title" style="color:var(--green)">▲ Income</div>
+          <div style="font-family:var(--font-cond);font-size:12px;color:var(--green)">${fmt(income)}</div>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th></th></tr></thead>
+          <tbody id="incTbody">
+            ${incTxs.length?incTxs.map(t=>`<tr>
+              <td style="color:var(--muted);font-size:11px;white-space:nowrap">${fmtDate(t.date)}</td>
+              <td style="font-weight:500;font-size:13px">${t.description||'—'}</td>
+              <td style="font-size:12px;color:var(--muted)">${t.category||'—'}</td>
+              <td style="font-family:var(--font-cond);font-size:14px;font-weight:600;color:var(--green)">+${fmt(t.amount)}</td>
+              <td><button class="btn danger" onclick="deleteTx('${t.id}')" style="padding:3px 7px;font-size:10px">Del</button></td>
+            </tr>`).join(''):`<tr><td colspan="5"><div class="empty-state" style="padding:20px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24" style="opacity:.2;margin:0 auto 6px;display:block"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 9v1"/></svg><p>No income yet</p></div></td></tr>`}
+          </tbody></table>
+        </div>
+        <div style="text-align:right;padding:8px 14px;font-family:var(--font-cond);font-size:11px;color:var(--muted)">${incTxs.length} entries</div>
+      </div>
+      <!-- EXPENSE COLUMN -->
+      <div>
+        <div class="section-header">
+          <div class="section-title" style="color:var(--red)">▼ Expenses</div>
+          <div style="font-family:var(--font-cond);font-size:12px;color:var(--red)">${fmt(expense)}</div>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th></th></tr></thead>
+          <tbody id="expTbody">
+            ${expTxs.length?expTxs.map(t=>`<tr>
+              <td style="color:var(--muted);font-size:11px;white-space:nowrap">${fmtDate(t.date)}</td>
+              <td style="font-weight:500;font-size:13px">${t.description||'—'}</td>
+              <td style="font-size:12px;color:var(--muted)">${t.category||'—'}</td>
+              <td style="font-family:var(--font-cond);font-size:14px;font-weight:600;color:var(--red)">-${fmt(t.amount)}</td>
+              <td><button class="btn danger" onclick="deleteTx('${t.id}')" style="padding:3px 7px;font-size:10px">Del</button></td>
+            </tr>`).join(''):`<tr><td colspan="5"><div class="empty-state" style="padding:20px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24" style="opacity:.2;margin:0 auto 6px;display:block"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 9v1"/></svg><p>No expenses yet</p></div></td></tr>`}
+          </tbody></table>
+        </div>
+        <div style="text-align:right;padding:8px 14px;font-family:var(--font-cond);font-size:11px;color:var(--muted)">${expTxs.length} entries</div>
+      </div>
+    </div>`;
 }
+
+// Tx tab filter for mobile
+function setTxTab(tab){
+  ['all','income','expense'].forEach(t=>{
+    const btn=document.getElementById('tab-'+t);
+    if(!btn)return;
+    btn.style.background=t===tab?'var(--white)':'transparent';
+    btn.style.color=t===tab?'var(--black)':t==='income'?'var(--green)':t==='expense'?'var(--red)':'var(--muted)';
+  });
+  document.querySelectorAll('#txCards .data-card[data-type]').forEach(r=>{
+    r.style.display=(tab==='all'||r.dataset.type===tab)?'':'none';
+  });
+}
+
 function filterTxType(type){
   document.querySelectorAll('#txCards .data-card[data-type]').forEach(r=>{r.style.display=(!type||r.dataset.type===type)?'':'none'});
-  document.querySelectorAll('#txTbody tr[data-type]').forEach(r=>{r.style.display=(!type||r.dataset.type===type)?'':'none'});
 }
 function openAddTx(dt){showModal('ADD TRANSACTION',`
   <div class="grid-2">
