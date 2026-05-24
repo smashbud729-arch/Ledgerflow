@@ -706,7 +706,10 @@ async function renderAccounting(){
         </div>
         <span class="amount-pill" style="color:${t.type==='income'?'var(--green)':'var(--red)'};font-size:14px">${t.type==='income'?'+':'-'}${fmt(t.amount)}</span>
       </div>
-      <div class="data-card-actions"><button class="btn danger" onclick="deleteTx('${t.id}')" style="font-size:11px;padding:4px 10px">Delete</button></div>
+      <div class="data-card-actions">
+        <button class="btn" onclick="editTxById('${t.id}')" style="font-size:11px;padding:4px 12px">Edit</button>
+        <button class="btn danger" onclick="deleteTx('${t.id}')" style="font-size:11px;padding:4px 10px">Delete</button>
+      </div>
     </div>`;
   document.getElementById('content').innerHTML=`
     ${negWarn}
@@ -744,7 +747,7 @@ async function renderAccounting(){
               <td style="font-weight:500;font-size:13px">${t.description||'—'}</td>
               <td style="font-size:12px;color:var(--muted)">${t.category||'—'}</td>
               <td style="font-family:var(--font-cond);font-size:14px;font-weight:600;color:var(--green)">+${fmt(t.amount)}</td>
-              <td><button class="btn danger" onclick="deleteTx('${t.id}')" style="padding:3px 7px;font-size:10px">Del</button></td>
+              <td style="display:flex;gap:4px"><button class="btn" onclick="editTxById('${t.id}')" style="padding:3px 7px;font-size:10px">Edit</button><button class="btn danger" onclick="deleteTx('${t.id}')" style="padding:3px 7px;font-size:10px">Del</button></td>
             </tr>`).join(''):`<tr><td colspan="5"><div class="empty-state" style="padding:20px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24" style="opacity:.2;margin:0 auto 6px;display:block"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 9v1"/></svg><p>No income yet</p></div></td></tr>`}
           </tbody></table>
         </div>
@@ -764,7 +767,7 @@ async function renderAccounting(){
               <td style="font-weight:500;font-size:13px">${t.description||'—'}</td>
               <td style="font-size:12px;color:var(--muted)">${t.category||'—'}</td>
               <td style="font-family:var(--font-cond);font-size:14px;font-weight:600;color:var(--red)">-${fmt(t.amount)}</td>
-              <td><button class="btn danger" onclick="deleteTx('${t.id}')" style="padding:3px 7px;font-size:10px">Del</button></td>
+              <td style="display:flex;gap:4px"><button class="btn" onclick="editTxById('${t.id}')" style="padding:3px 7px;font-size:10px">Edit</button><button class="btn danger" onclick="deleteTx('${t.id}')" style="padding:3px 7px;font-size:10px">Del</button></td>
             </tr>`).join(''):`<tr><td colspan="5"><div class="empty-state" style="padding:20px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24" style="opacity:.2;margin:0 auto 6px;display:block"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 9v1"/></svg><p>No expenses yet</p></div></td></tr>`}
           </tbody></table>
         </div>
@@ -798,7 +801,7 @@ function openAddTx(dt){showModal('ADD TRANSACTION',`
   <div class="form-group"><label class="form-label">Description *</label><input class="form-input" id="tDesc" placeholder="e.g. Monthly membership fee"/></div>
   <div class="grid-2">
     <div class="form-group"><label class="form-label">Category</label>
-      <select class="form-input" id="tCat">${['','Membership Fees','Court Booking','Tournament Entry','Sponsorship','Equipment Purchase','Venue Rent','Coaching Fees','Utilities','Other'].map(c=>`<option value="${c}">${c||'No Category'}</option>`).join('')}</select></div>
+      <select class="form-input" id="tCat">${['','Membership Fees','Court Booking','Tournament Entry','Sponsorship','Equipment Purchase','Venue Rent','Coaching Fees','Uniforms','Utilities','Other'].map(c=>`<option value="${c}">${c||'No Category'}</option>`).join('')}</select></div>
     <div class="form-group"><label class="form-label">Date</label><input class="form-input" id="tDate" type="date" value="${new Date().toISOString().split('T')[0]}"/></div>
   </div>
   <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="tNotes" placeholder="Optional"/></div>
@@ -807,6 +810,45 @@ function openAddTx(dt){showModal('ADD TRANSACTION',`
   const{error}=await sb.from('wlf_transactions').insert({type:v('tType'),amount:amt,description:desc,category:v('tCat'),date:v('tDate'),notes:v('tNotes')});
   if(error)return alert(error.message);closeModal();renderAccounting();
 },'Save Transaction')}
+function openEditTx(t){
+  showModal('EDIT TRANSACTION',`
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">Type</label>
+        <select class="form-input" id="tType">
+          <option value="income" ${t.type==='income'?'selected':''}>Income</option>
+          <option value="expense" ${t.type==='expense'?'selected':''}>Expense</option>
+        </select></div>
+      <div class="form-group"><label class="form-label">Amount (AED) *</label>
+        <input class="form-input" id="tAmt" type="number" inputmode="decimal" step="0.01" min="0" value="${t.amount}"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Description *</label>
+      <input class="form-input" id="tDesc" value="${t.description||''}"/></div>
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">Category</label>
+        <select class="form-input" id="tCat">${['','Membership Fees','Court Booking','Tournament Entry','Sponsorship','Equipment Purchase','Venue Rent','Coaching Fees','Uniforms','Utilities','Other'].map(c=>`<option value="${c}" ${t.category===c?'selected':''}>${c||'No Category'}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Date</label>
+        <input class="form-input" id="tDate" type="date" value="${t.date||todayStr()}"/></div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label>
+      <input class="form-input" id="tNotes" value="${t.notes||''}" placeholder="Optional"/></div>
+    <div class="divider"></div>
+    <button class="btn danger" onclick="deleteTx('${t.id}')" style="width:100%;justify-content:center">Delete Transaction</button>
+  `,async()=>{
+    if(!requireField('tDesc','Description is required'))return;
+    if(!requireField('tAmt','Amount is required'))return;
+    const payload={type:v('tType'),amount:fv('tAmt'),description:v('tDesc'),category:v('tCat'),date:v('tDate'),notes:v('tNotes')};
+    const{error}=await sb.from('wlf_transactions').update(payload).eq('id',t.id);
+    if(error)return toast(error.message,'error');
+    logAudit('UPDATE','Accounting',`Updated "${payload.description}" ${payload.type} AED${payload.amount}`);
+    closeModal();toast('Transaction updated','success');renderAccounting();
+  },'Save Changes');
+}
+
+function editTxById(id){
+  const t=(window._txData||[]).find(x=>x.id===id);
+  if(t)openEditTx(t);else toast('Transaction not found','error');
+}
+
 async function deleteTx(id){if(!confirm('Delete transaction?'))return;await sb.from('wlf_transactions').delete().eq('id',id);renderAccounting()}
 
 // -- MEMBERS --
