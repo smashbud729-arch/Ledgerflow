@@ -409,6 +409,22 @@ function requireField(id,msg){
 function todayStr(){return new Date().toISOString().split('T')[0]}
 
 // -- SWIPE TO DELETE --
+// ── OPEN IMAGE SAFELY (avoids data: URL browser block) ──
+function openImage(src){
+  if(!src)return;
+  if(src.startsWith('data:')){
+    try{
+      const arr=src.split(','),mime=arr[0].match(/:(.*?);/)[1];
+      const bstr=atob(arr[1]);let n=bstr.length;const u=new Uint8Array(n);
+      while(n--)u[n]=bstr.charCodeAt(n);
+      const url=URL.createObjectURL(new Blob([u],{type:mime}));
+      window.open(url,'_blank');
+      setTimeout(()=>URL.revokeObjectURL(url),15000);
+    }catch(e){toast('Could not open image','error')}
+  }else{window.open(src,'_blank')}
+}
+
+// ── SWIPE TO DELETE ──
 function addSwipe(el,onDelete){
   let startX=0,curX=0,swiping=false;
   const card=el.querySelector('.swipe-card')||el;
@@ -993,7 +1009,7 @@ async function renderReceipts(){
       ${receipts.length?receipts.map(r=>`
         <div class="data-card" data-search="${((r.description||'')+( r.vendor||'')+( r.notes||'')).toLowerCase()}">
           <div class="data-card-header" style="gap:12px">
-            ${r.image_data?`<img src="${r.image_data}" class="receipt-thumb" onclick="window.open('${r.image_data}','_blank')" style="cursor:pointer;flex-shrink:0"/>`:r.image_url?`<img src="${r.image_url}" class="receipt-thumb" style="cursor:pointer;flex-shrink:0" onclick="window.open('${r.image_url}','_blank')"/>`  :`<div class="receipt-placeholder" style="flex-shrink:0">📄</div>`}
+            ${r.image_data?`<img src="${r.image_data}" class="receipt-thumb" onclick="openImage('${r.image_data}')" style="cursor:pointer;flex-shrink:0"/>`:r.image_url?`<img src="${r.image_url}" class="receipt-thumb" style="cursor:pointer;flex-shrink:0" onclick="openImage('${r.image_url}')"/>`  :`<div class="receipt-placeholder" style="flex-shrink:0">📄</div>`}
             <div style="flex:1;min-width:0">
               <div class="data-card-title">${r.description||'—'}</div>
               <div style="font-family:var(--font-cond);font-size:16px;font-weight:600;color:var(--amber);margin-top:3px">${fmt(r.amount)}</div>
@@ -1007,7 +1023,7 @@ async function renderReceipts(){
       <table><thead><tr><th>Img</th><th>Description</th><th>Vendor</th><th>Date</th><th>Amount</th><th></th></tr></thead>
       <tbody>
         ${receipts.length?receipts.map(r=>`<tr>
-          <td>${r.image_data?`<img src="${r.image_data}" class="receipt-thumb" onclick="window.open('${r.image_data}','_blank')" style="cursor:pointer"/>`:r.image_url?`<img src="${r.image_url}" class="receipt-thumb"/>` :`<div class="receipt-placeholder">📄</div>`}</td>
+          <td>${r.image_data?`<img src="${r.image_data}" class="receipt-thumb" onclick="openImage('${r.image_data}')" style="cursor:pointer"/>`:r.image_url?`<img src="${r.image_url}" class="receipt-thumb"/>` :`<div class="receipt-placeholder">📄</div>`}</td>
           <td style="font-weight:500">${r.description||'—'}</td><td>${r.vendor||'—'}</td>
           <td style="font-size:12px;color:var(--muted)">${fmtDate(r.date)}</td>
           <td style="font-family:var(--font-cond);font-size:14px;font-weight:600;color:var(--amber)">${fmt(r.amount)}</td>
