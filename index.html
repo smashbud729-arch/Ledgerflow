@@ -166,7 +166,40 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 .receipt-thumb{width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--border)}
 .receipt-placeholder{width:44px;height:44px;border-radius:6px;border:1px dashed var(--border2);display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:20px}
 
-/* LOGIN */
+/* TOAST */
+#toastContainer{position:fixed;bottom:calc(var(--bnav) + var(--safe-b,0px) + 70px);left:50%;transform:translateX(-50%);z-index:9000;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;width:calc(100vw - 32px);max-width:360px}
+.toast{background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:11px 16px;font-family:var(--font-cond);font-size:13px;letter-spacing:.5px;color:var(--text);display:flex;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,.6);animation:toastIn .25s ease;pointer-events:all;width:100%}
+.toast.success{border-color:#1a3328;color:var(--green)}.toast.error{border-color:#5a2020;color:var(--red)}.toast.warning{border-color:#5a3a10;color:var(--amber)}
+.toast-msg{flex:1}.toast-undo{background:none;border:none;color:inherit;cursor:pointer;font-family:var(--font-cond);font-size:12px;letter-spacing:1px;text-decoration:underline;padding:0;opacity:.8}
+@keyframes toastIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes toastOut{to{opacity:0;transform:translateY(12px)}}
+/* FORM ERROR SHAKE */
+.form-input.error{border-color:var(--red);animation:shake .3s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+/* ROW ACCENTS */
+tr.accent-red td:first-child{border-left:3px solid var(--red)}
+tr.accent-amber td:first-child{border-left:3px solid var(--amber)}
+.data-card.accent-red{border-left:3px solid var(--red)}.data-card.accent-amber{border-left:3px solid var(--amber)}
+/* SWIPE DELETE */
+.swipe-wrap{position:relative;overflow:hidden;border-radius:10px;margin-bottom:10px}
+.swipe-delete-bg{position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--red);display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--font-cond);font-size:11px;letter-spacing:1px;border-radius:10px}
+.swipe-card{transition:transform .2s ease;will-change:transform}
+/* BULK BAR */
+.bulk-bar{background:var(--card2);border:1px solid var(--border2);border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.bulk-bar-info{font-family:var(--font-cond);font-size:13px;color:var(--text);letter-spacing:.5px}
+/* RECENT CHIPS */
+.recent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:18px}
+.recent-chip{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:border-color .15s}
+.recent-chip:hover{border-color:var(--border2)}
+.recent-chip-label{font-family:var(--font-cond);font-size:9px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:4px}
+.recent-chip-title{font-size:13px;font-weight:500;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recent-chip-sub{font-size:11px;color:var(--muted);margin-top:2px}
+/* EMPTY STATE BUTTON */
+.empty-state button{margin-top:12px}
+/* MOBILE BOTTOM TOAST OFFSET */
+@media(max-width:768px){#toastContainer{bottom:calc(var(--bnav) + 14px)}}
+/* LOGIN */"
+
 #loginScreen{position:fixed;inset:0;background:var(--black);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}
 .login-box{width:100%;max-width:360px}
 .login-logo{text-align:center;margin-bottom:28px}
@@ -216,6 +249,9 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 </head>
 <body>
 
+<!-- TOAST -->
+<div id="toastContainer"></div>
+
 <!-- LOGIN -->
 <div id="loginScreen">
   <div class="login-box">
@@ -257,6 +293,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
   <div class="more-item" id="mm-uniforms" onclick="navigate('uniforms');closeMore()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>Uniform Ledger
   </div>
+  <div class="more-item" id="mm-auditlog" onclick="navigate('auditlog');closeMore()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>Audit Log</div>
   <div class="more-item" onclick="handleLogout()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>Logout
   </div>
@@ -344,6 +381,63 @@ function updateFab(){const f=document.getElementById('fab');if(f)f.style.display
 
 // ── LOGIN ──
 const CREDS={username:'admin',password:'123456!'};
+
+// ── AUDIT LOG ──
+const auditLog=[];
+function logAudit(action,table,details){auditLog.unshift({action,table,details,time:new Date().toISOString()});if(auditLog.length>200)auditLog.pop()}
+
+// ── TOAST ──
+function toast(msg,type='success',dur=3500){
+  const c=document.getElementById('toastContainer');if(!c)return;
+  const el=document.createElement('div');el.className='toast '+type;
+  const icon=type==='success'?'✓':type==='error'?'✗':'⚠';
+  el.innerHTML='<span>'+icon+'</span><span class="toast-msg">'+msg+'</span>';
+  c.appendChild(el);
+  setTimeout(()=>{el.style.animation='toastOut .25s ease forwards';setTimeout(()=>el.remove(),250)},dur);
+}
+
+// ── FIELD VALIDATION ──
+function requireField(id,msg){
+  const el=document.getElementById(id);
+  if(!el||!el.value.trim()){if(el){el.classList.add('error');el.focus();setTimeout(()=>el.classList.remove('error'),600)}toast(msg,'error');return false}
+  return true;
+}
+
+// ── TODAY STRING ──
+function todayStr(){return new Date().toISOString().split('T')[0]}
+
+// ── SWIPE TO DELETE ──
+function addSwipe(el,onDelete){
+  let startX=0,curX=0,swiping=false;
+  const card=el.querySelector('.swipe-card')||el;
+  card.addEventListener('touchstart',e=>{startX=e.touches[0].clientX;swiping=true},{passive:true});
+  card.addEventListener('touchmove',e=>{if(!swiping)return;curX=e.touches[0].clientX-startX;if(curX<0)card.style.transform='translateX('+Math.max(curX,-80)+'px)'},{passive:true});
+  card.addEventListener('touchend',()=>{
+    if(curX<-60){card.style.transform='translateX(-80px)';setTimeout(()=>{if(confirm('Delete this record?')){onDelete()}else{card.style.transform=''}},100)}
+    else{card.style.transform=''}swiping=false;curX=0;
+  });
+}
+
+// ── EXPORT CSV ──
+function exportCSV(rows,filename){
+  if(!rows||!rows.length)return toast('Nothing to export','warning');
+  const keys=Object.keys(rows[0]);
+  const csv=[keys.join(','),...rows.map(r=>keys.map(k=>'"'+String(r[k]||'').replace(/"/g,'""')+'"').join(','))].join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=filename;a.click();
+  toast('CSV exported','success');
+}
+
+// ── KEYBOARD SHORTCUTS ──
+document.addEventListener('keydown',e=>{
+  const login=document.getElementById('loginScreen');
+  if(login&&login.style.display!=='none'){if(e.key==='Enter')handleLogin();return}
+  if(document.getElementById('modalOverlay')){if(e.key==='Escape')closeModal();return}
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT')return;
+  const FAB_MAP={inventory:'openAddItem',accounting:'openAddTxFab',members:'openAddMember',sessions:'openAddSession',receipts:'openAddReceipt',uniforms:'openAddUniform'};
+  if(e.key==='n'||e.key==='N'){const fn=FAB_MAP[currentPage];if(fn&&window[fn])window[fn]()}
+  if(e.key==='/'){e.preventDefault();const s=document.querySelector('#content input[placeholder*="Search"],#content input[placeholder*="earch"]');if(s){s.focus();s.select()}}
+});
+
 function handleLogin(){
   const user=document.getElementById('loginUser').value.trim();
   const pass=document.getElementById('loginPass').value;
@@ -368,6 +462,7 @@ const PAGES=[
   {id:'receipts',label:'Receipts',grp:'Operations',icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>'},
   {id:'reports',label:'Monthly Reports',grp:'Operations',icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>'},
   {id:'uniforms',label:'Uniform Ledger',grp:'Operations',icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>'},
+  {id:'auditlog',label:'Audit Log',grp:'Operations',icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>'},
 ];
 
 function fmt(n){return'AED '+Number(n||0).toLocaleString('en-AE',{minimumFractionDigits:2,maximumFractionDigits:2})}
@@ -379,9 +474,9 @@ function renderNav(){
   const groups=[...new Set(PAGES.map(p=>p.grp))];
   nav.innerHTML=groups.map(g=>`<div class="nav-section">${g}</div>${PAGES.filter(p=>p.grp===g).map(p=>`<div class="nav-item ${currentPage===p.id?'active':''}" onclick="navigate('${p.id}');closeSidebar()">${p.icon}<span>${p.label}</span></div>`).join('')}`).join('');
   ['dashboard','inventory','accounting','members'].forEach(id=>{const el=document.getElementById('bn-'+id);if(el)el.classList.toggle('active',currentPage===id)});
-  ['sessions','receipts','reports','uniforms'].forEach(id=>{const el=document.getElementById('mm-'+id);if(el)el.classList.toggle('active',currentPage===id)});
+  ['sessions','receipts','reports','uniforms','auditlog'].forEach(id=>{const el=document.getElementById('mm-'+id);if(el)el.classList.toggle('active',currentPage===id)});
   const moreBtn=document.getElementById('bn-more');
-  if(moreBtn)moreBtn.classList.toggle('active',['sessions','receipts','reports','uniforms'].includes(currentPage));
+  if(moreBtn)moreBtn.classList.toggle('active',['sessions','receipts','reports','uniforms','auditlog'].includes(currentPage));
   updateFab();
 }
 
@@ -572,13 +667,13 @@ function itemForm(i={}){return`
   <div class="form-group"><label class="form-label">Supplier</label><input class="form-input" id="iSup" value="${i.supplier||''}" placeholder="Supplier name"/></div>
   <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="iNotes" value="${i.notes||''}" placeholder="Optional"/></div>`}
 function openAddItem(){showModal('ADD ITEM',itemForm(),async()=>{
-  const name=v('iName');if(!name)return alert('Name required');
+  const name=v('iName');if(!name)return toast('Name required','error');
   const{error}=await sb.from('wlf_inventory').insert({name,category:v('iCat'),quantity:iv('iQty'),min_stock:iv('iMin'),unit_cost:fv('iCost'),supplier:v('iSup'),notes:v('iNotes')});
-  if(error)return alert(error.message);closeModal();renderInventory();
+  if(error)return toast(error.message,'error');logAudit('SAVE','Inventory','Record saved');closeModal();toast('Saved','success');renderInventory();
 },'Save Item')}
 function openEditItem(i){showModal('EDIT ITEM',itemForm(i)+`<div class="divider"></div><button class="btn danger" onclick="deleteItem('${i.id}')" style="width:100%;justify-content:center">Delete Item</button>`,async()=>{
   const{error}=await sb.from('wlf_inventory').update({name:v('iName'),category:v('iCat'),quantity:iv('iQty'),min_stock:iv('iMin'),unit_cost:fv('iCost'),supplier:v('iSup'),notes:v('iNotes')}).eq('id',i.id);
-  if(error)return alert(error.message);closeModal();renderInventory();
+  if(error)return toast(error.message,'error');logAudit('SAVE','Inventory','Record saved');closeModal();toast('Saved','success');renderInventory();
 },'Save Changes')}
 async function deleteItem(id){if(!confirm('Delete item?'))return;await sb.from('wlf_inventory').delete().eq('id',id);closeModal();renderInventory()}
 
@@ -593,8 +688,10 @@ async function renderAccounting(){
   const txs=data||[];
   const income=txs.filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount),0);
   const expense=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+Number(t.amount),0);
+  const netBal=income-expense;
+  const negWarn=netBal<0?`<div class="alert-banner">⚠️ Club balance is negative: <strong>${fmt(netBal)}</strong>. Review expenses.</div>`:'';
   document.getElementById('content').innerHTML=`
-    <div class="stats-grid cols3">
+    ${negWarn}<div class="stats-grid cols3">
       <div class="stat-card green"><div class="stat-label">Income</div><div class="stat-value" style="font-size:15px">${fmt(income)}</div></div>
       <div class="stat-card red"><div class="stat-label">Expenses</div><div class="stat-value" style="font-size:15px">${fmt(expense)}</div></div>
       <div class="stat-card ${income-expense>=0?'green':'red'}"><div class="stat-label">Balance</div><div class="stat-value" style="font-size:15px">${fmt(income-expense)}</div></div>
@@ -643,7 +740,7 @@ function openAddTx(dt){showModal('ADD TRANSACTION',`
   </div>
   <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="tNotes" placeholder="Optional"/></div>
 `,async()=>{
-  const desc=v('tDesc'),amt=fv('tAmt');if(!desc||!amt)return alert('Description and amount required');
+  const desc=v('tDesc'),amt=fv('tAmt');if(!desc||!amt)return toast('Description and amount required','error');
   const{error}=await sb.from('wlf_transactions').insert({type:v('tType'),amount:amt,description:desc,category:v('tCat'),date:v('tDate'),notes:v('tNotes')});
   if(error)return alert(error.message);closeModal();renderAccounting();
 },'Save Transaction')}
@@ -694,13 +791,13 @@ function memberForm(m={}){return`
   </div>
   <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="mNotes" value="${m.notes||''}" placeholder="Optional"/></div>`}
 function openAddMember(){showModal('ADD MEMBER',memberForm(),async()=>{
-  const name=v('mName');if(!name)return alert('Name required');
+  const name=v('mName');if(!name)return toast('Name required','error');
   const{error}=await sb.from('wlf_members').insert({name,email:v('mEmail'),phone:v('mPhone'),status:v('mStatus'),joined_at:v('mJoined'),notes:v('mNotes')});
-  if(error)return alert(error.message);closeModal();renderMembers();
+  if(error)return toast(error.message,'error');logAudit('SAVE','Members','Record saved');closeModal();toast('Saved','success');renderMembers();
 },'Save Member')}
 function openEditMember(m){showModal('EDIT MEMBER',memberForm(m)+`<div class="divider"></div><button class="btn danger" onclick="deleteMember('${m.id}')" style="width:100%;justify-content:center">Delete Member</button>`,async()=>{
   const{error}=await sb.from('wlf_members').update({name:v('mName'),email:v('mEmail'),phone:v('mPhone'),status:v('mStatus'),joined_at:v('mJoined'),notes:v('mNotes')}).eq('id',m.id);
-  if(error)return alert(error.message);closeModal();renderMembers();
+  if(error)return toast(error.message,'error');logAudit('SAVE','Members','Record saved');closeModal();toast('Saved','success');renderMembers();
 },'Save Changes')}
 async function deleteMember(id){if(!confirm('Delete member?'))return;await sb.from('wlf_members').delete().eq('id',id);closeModal();renderMembers()}
 
@@ -764,13 +861,13 @@ function sessionForm(s={}){return`
   </div>
   <div class="form-group"><label class="form-label">Notes</label><textarea class="form-input" id="sNotes">${s.notes||''}</textarea></div>`}
 function openAddSession(){showModal('ADD SESSION',sessionForm(),async()=>{
-  const title=v('sTitle');if(!title)return alert('Title required');
+  const title=v('sTitle');if(!title)return toast('Title required','error');
   const{error}=await sb.from('wlf_sessions').insert({title,court:v('sCourt'),date:v('sDate'),start_time:v('sStart'),end_time:v('sEnd'),attendee_count:iv('sAttendees'),cost:fv('sCost'),status:v('sStatus'),notes:v('sNotes')});
-  if(error)return alert(error.message);closeModal();renderSessions();
+  if(error)return toast(error.message,'error');logAudit('SAVE','Sessions','Record saved');closeModal();toast('Saved','success');renderSessions();
 },'Save Session')}
 function openEditSession(s){showModal('EDIT SESSION',sessionForm(s)+`<div class="divider"></div><button class="btn danger" onclick="deleteSession('${s.id}')" style="width:100%;justify-content:center">Delete Session</button>`,async()=>{
   const{error}=await sb.from('wlf_sessions').update({title:v('sTitle'),court:v('sCourt'),date:v('sDate'),start_time:v('sStart'),end_time:v('sEnd'),attendee_count:iv('sAttendees'),cost:fv('sCost'),status:v('sStatus'),notes:v('sNotes')}).eq('id',s.id);
-  if(error)return alert(error.message);closeModal();renderSessions();
+  if(error)return toast(error.message,'error');logAudit('SAVE','Sessions','Record saved');closeModal();toast('Saved','success');renderSessions();
 },'Save Changes')}
 async function deleteSession(id){if(!confirm('Delete session?'))return;await sb.from('wlf_sessions').delete().eq('id',id);closeModal();renderSessions()}
 
@@ -831,7 +928,7 @@ function openAddReceipt(){showModal('ADD RECEIPT',`
 `,async()=>{
   const{error}=await sb.from('wlf_receipts').insert({description:v('rDesc'),vendor:v('rVendor'),amount:fv('rAmt'),date:v('rDate'),image_url:v('rUrl'),notes:v('rNotes'),image_data:window._receiptB64||null});
   window._receiptB64=null;
-  if(error)return alert(error.message);closeModal();renderReceipts();
+  if(error)return toast(error.message,'error');logAudit('SAVE','Receipts','Record saved');closeModal();toast('Saved','success');renderReceipts();
 },'Save Receipt')}
 function previewReceipt(input){
   const file=input.files[0];if(!file)return;
@@ -1053,13 +1150,13 @@ function uniformForm(i={}){return`
     <textarea class="form-input" id="uComments" placeholder="Optional notes...">${i.comments||''}</textarea></div>`}
 
 function openAddUniform(){showModal('ADD UNIFORM',uniformForm(),async()=>{
-  const name=v('uName');if(!name)return alert('Player name is required');
-  const item=v('uItem');if(!item)return alert('Please select a uniform item');
+  const name=v('uName');if(!name)return toast('Player name is required','error');
+  const item=v('uItem');if(!item)return toast('Please select a uniform item','error');
   const{error}=await sb.from('wlf_uniforms').insert({
     member_name:v('uName'),uniform_item:item,size:v('uSize'),jersey_number:v('uJersey'),
     payment_status:v('uPayment'),delivery_status:v('uDelivery'),comments:v('uComments')
   });
-  if(error)return alert(error.message);closeModal();renderUniforms();
+  if(error)return toast(error.message,'error');logAudit('SAVE','Uniforms','Record saved');closeModal();toast('Saved','success');renderUniforms();
 },'Save Record')}
 
 function openEditUniform(i){showModal('EDIT UNIFORM',uniformForm(i)+`<div class="divider"></div><button class="btn danger" onclick="deleteUniform('${i.id}')" style="width:100%;justify-content:center">Delete Record</button>`,async()=>{
@@ -1067,15 +1164,27 @@ function openEditUniform(i){showModal('EDIT UNIFORM',uniformForm(i)+`<div class=
     member_name:v('uName'),uniform_item:v('uItem'),size:v('uSize'),jersey_number:v('uJersey'),
     payment_status:v('uPayment'),delivery_status:v('uDelivery'),comments:v('uComments')
   }).eq('id',i.id);
-  if(error)return alert(error.message);closeModal();renderUniforms();
+  if(error)return toast(error.message,'error');logAudit('SAVE','Uniforms','Record saved');closeModal();toast('Saved','success');renderUniforms();
 },'Save Changes')}
 
 async function deleteUniform(id){if(!confirm('Delete this record?'))return;await sb.from('wlf_uniforms').delete().eq('id',id);closeModal();renderUniforms()}
 
+// ── AUDIT LOG PAGE ──
+function renderAuditLog(){
+  document.getElementById('pageTitle').textContent='AUDIT LOG';
+  document.getElementById('topbarActions').innerHTML=`<button class="btn" onclick="auditLog.length=0;renderAuditLog()" style="padding:7px 12px;color:var(--muted);font-size:12px">Clear Log</button>`;
+  const content=document.getElementById('content');
+  if(!auditLog.length){content.innerHTML='<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36" style="opacity:.2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg><p>No activity yet this session</p><div style="font-size:11px;color:var(--dim);margin-top:6px">Every create, update and delete you do is tracked here</div></div>';return}
+  const aColor={CREATE:'var(--green)',UPDATE:'var(--blue)',DELETE:'var(--red)',BULK:'var(--amber)',SAVE:'var(--green)'};
+  content.innerHTML=`<div class="table-wrap"><table style="min-width:0"><thead><tr><th>Time</th><th>Action</th><th>Module</th><th>Details</th></tr></thead><tbody>
+    ${auditLog.map(e=>`<tr><td style="color:var(--muted);font-size:11px;white-space:nowrap">${new Date(e.time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</td><td><span class="badge" style="background:rgba(0,0,0,.3);color:${aColor[e.action]||'var(--text)'}">${e.action}</span></td><td style="font-family:var(--font-cond);font-size:12px">${e.table}</td><td style="font-size:12px;color:var(--muted)">${e.details}</td></tr>`).join('')}
+  </tbody></table></div><div style="text-align:center;font-size:11px;color:var(--dim);margin-top:8px">${auditLog.length} entries this session · Resets on page refresh</div>`;
+}
+
 // ── ROUTER ──
 function render(){
   if(!sb){renderSetup();renderNav();return}
-  const map={dashboard:renderDashboard,inventory:renderInventory,accounting:renderAccounting,members:renderMembers,sessions:renderSessions,receipts:renderReceipts,reports:renderReports,uniforms:renderUniforms};
+  const map={dashboard:renderDashboard,inventory:renderInventory,accounting:renderAccounting,members:renderMembers,sessions:renderSessions,receipts:renderReceipts,reports:renderReports,uniforms:renderUniforms,auditlog:renderAuditLog};
   (map[currentPage]||renderDashboard)();renderNav();
 }
 
