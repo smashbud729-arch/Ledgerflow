@@ -372,7 +372,6 @@ const PAGES=[
 
 function fmt(n){return'AED '+Number(n||0).toLocaleString('en-AE',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function fmtDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}
-function isMobile(){return window.innerWidth<=768}
 
 function renderNav(){
   const nav=document.getElementById('nav');
@@ -946,7 +945,6 @@ function v(id){const el=document.getElementById(id);return el?(el.value||''). tr
 function iv(id){return parseInt(v(id))||0}
 function fv(id){return parseFloat(v(id))||0}
 
-
 // ── UNIFORM LEDGER ──
 async function renderUniforms(){
   document.getElementById('pageTitle').textContent='UNIFORMS';
@@ -965,13 +963,14 @@ async function renderUniforms(){
     </div>
     <div class="section-header"><div class="section-title">${items.length} Uniform Records</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <input class="form-input" placeholder="Search name..." style="width:130px;padding:8px 10px;font-size:13px" oninput="filterUniSearch(this.value)"/>
         <select class="form-input" style="width:110px;padding:8px 10px;font-size:12px" onchange="filterUni('payment',this.value)"><option value="">Payment</option><option>Paid</option><option>Unpaid</option></select>
         <select class="form-input" style="width:110px;padding:8px 10px;font-size:12px" onchange="filterUni('delivery',this.value)"><option value="">Delivery</option><option>Received</option><option>Pending</option></select>
       </div>
     </div>
     <div class="card-list" id="uniCards">
       ${items.length?items.map(i=>`
-        <div class="data-card" data-payment="${i.payment_status}" data-delivery="${i.delivery_status}">
+        <div class="data-card" data-payment="${i.payment_status}" data-delivery="${i.delivery_status}" data-name="${i.member_name?i.member_name.toLowerCase():''}">
           <div class="data-card-header">
             <div>
               <div class="data-card-title">${i.member_name||'Unknown'}</div>
@@ -989,7 +988,7 @@ async function renderUniforms(){
     <div class="table-wrap desktop-only">
       <table><thead><tr><th>Name</th><th>Uniform Item</th><th>Size</th><th>Jersey #</th><th>Payment</th><th>Delivery</th><th>Comments</th><th></th></tr></thead>
       <tbody id="uniTbody">
-        ${items.length?items.map(i=>`<tr data-payment="${i.payment_status}" data-delivery="${i.delivery_status}">
+        ${items.length?items.map(i=>`<tr data-payment="${i.payment_status}" data-delivery="${i.delivery_status}" data-name="${i.member_name?i.member_name.toLowerCase():''}">
           <td style="font-weight:500">${i.member_name||'—'}</td>
           <td>${i.uniform_item}</td>
           <td>${i.size||'—'}</td>
@@ -1002,6 +1001,17 @@ async function renderUniforms(){
       </tbody></table></div>`;
 }
 
+function filterUniSearch(q){
+  q=q.toLowerCase();
+  document.querySelectorAll('#uniCards .data-card').forEach(r=>{
+    var name=(r.getAttribute('data-name')||'');
+    r.style.display=name.includes(q)?'':'none';
+  });
+  document.querySelectorAll('#uniTbody tr').forEach(r=>{
+    var name=(r.getAttribute('data-name')||'');
+    r.style.display=name.includes(q)?'':'none';
+  });
+}
 function filterUni(type,val){
   const attr='data-'+type;
   document.querySelectorAll('#uniCards .data-card['+attr+']').forEach(r=>{
@@ -1043,6 +1053,7 @@ function uniformForm(i={}){return`
     <textarea class="form-input" id="uComments" placeholder="Optional notes...">${i.comments||''}</textarea></div>`}
 
 function openAddUniform(){showModal('ADD UNIFORM',uniformForm(),async()=>{
+  const name=v('uName');if(!name)return alert('Player name is required');
   const item=v('uItem');if(!item)return alert('Please select a uniform item');
   const{error}=await sb.from('wlf_uniforms').insert({
     member_name:v('uName'),uniform_item:item,size:v('uSize'),jersey_number:v('uJersey'),
