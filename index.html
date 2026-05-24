@@ -363,8 +363,10 @@ tr.accent-amber td:first-child{border-left:3px solid var(--amber)}
 <script>
 const {createClient}=supabase;
 let sb=null,currentPage='setup';
+const SUPABASE_URL='https://ccbzgwkdbnnfwfgjzycj.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjYnpnd2tkYm5uZndmZ2p6eWNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1Mjc0MjcsImV4cCI6MjA5NTEwMzQyN30.fldakQmQz18cA17xBHzSDnMq4cg5Px8lor5Elfn_ESA';
 
-// ── SIDEBAR ──
+// -- SIDEBAR --
 function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('sidebarOverlay').classList.add('open')}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebarOverlay').classList.remove('open')}
 let moreOpen=false;
@@ -379,14 +381,14 @@ function fabAction(){const fn=FAB_ACTIONS[currentPage];if(fn&&window[fn])window[
 function openAddTxFab(){openAddTx('expense')}
 function updateFab(){const f=document.getElementById('fab');if(f)f.style.display=FAB_ACTIONS[currentPage]?'flex':'none'}
 
-// ── LOGIN ──
+// -- LOGIN --
 const CREDS={username:'admin',password:'123456!'};
 
-// ── AUDIT LOG ──
+// -- AUDIT LOG --
 const auditLog=[];
 function logAudit(action,table,details){auditLog.unshift({action,table,details,time:new Date().toISOString()});if(auditLog.length>200)auditLog.pop()}
 
-// ── TOAST ──
+// -- TOAST --
 function toast(msg,type='success',dur=3500){
   const c=document.getElementById('toastContainer');if(!c)return;
   const el=document.createElement('div');el.className='toast '+type;
@@ -396,17 +398,17 @@ function toast(msg,type='success',dur=3500){
   setTimeout(()=>{el.style.animation='toastOut .25s ease forwards';setTimeout(()=>el.remove(),250)},dur);
 }
 
-// ── FIELD VALIDATION ──
+// -- FIELD VALIDATION --
 function requireField(id,msg){
   const el=document.getElementById(id);
   if(!el||!el.value.trim()){if(el){el.classList.add('error');el.focus();setTimeout(()=>el.classList.remove('error'),600)}toast(msg,'error');return false}
   return true;
 }
 
-// ── TODAY STRING ──
+// -- TODAY STRING --
 function todayStr(){return new Date().toISOString().split('T')[0]}
 
-// ── SWIPE TO DELETE ──
+// -- SWIPE TO DELETE --
 function addSwipe(el,onDelete){
   let startX=0,curX=0,swiping=false;
   const card=el.querySelector('.swipe-card')||el;
@@ -418,7 +420,7 @@ function addSwipe(el,onDelete){
   });
 }
 
-// ── EXPORT CSV ──
+// -- EXPORT CSV --
 function exportCSV(rows,filename){
   if(!rows||!rows.length)return toast('Nothing to export','warning');
   const keys=Object.keys(rows[0]);
@@ -427,7 +429,7 @@ function exportCSV(rows,filename){
   toast('CSV exported','success');
 }
 
-// ── KEYBOARD SHORTCUTS ──
+// -- KEYBOARD SHORTCUTS --
 document.addEventListener('keydown',e=>{
   const login=document.getElementById('loginScreen');
   if(login&&login.style.display!=='none'){if(e.key==='Enter')handleLogin();return}
@@ -452,7 +454,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementB
 function checkAuth(){if(sessionStorage.getItem('wlf_auth')==='1'){document.getElementById('loginScreen').style.display='none';return true}return false}
 function handleLogout(){sessionStorage.removeItem('wlf_auth');location.reload()}
 
-// ── PAGES ──
+// -- PAGES --
 const PAGES=[
   {id:'dashboard',label:'Dashboard',grp:'Main',icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>'},
   {id:'inventory',label:'Inventory',grp:'Main',icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>'},
@@ -493,7 +495,7 @@ async function initSupabase(url,key){
   }catch(e){setStatus(false,'Error');return e.message||'Connection failed'}
 }
 
-// ── SETUP ──
+// -- SETUP --
 function renderSetup(){
   document.getElementById('pageTitle').textContent='SETUP';
   document.getElementById('topbarActions').innerHTML='';
@@ -538,7 +540,7 @@ async function handleConnect(){
   if(err)e.innerHTML=`<div class="error-msg">${err}</div>`;
 }
 
-// ── DASHBOARD ──
+// -- DASHBOARD --
 async function renderDashboard(){
   document.getElementById('pageTitle').textContent='DASHBOARD';
   document.getElementById('topbarActions').innerHTML='';
@@ -606,7 +608,7 @@ async function renderDashboard(){
   }
 }
 
-// ── INVENTORY ──
+// -- INVENTORY --
 async function renderInventory(){
   document.getElementById('pageTitle').textContent='INVENTORY';
   document.getElementById('topbarActions').innerHTML=`<button class="btn primary" onclick="openAddItem()" style="padding:7px 12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 4v16m8-8H4"/></svg><span class="btn-label"> Add</span></button>`;
@@ -677,7 +679,9 @@ function openEditItem(i){showModal('EDIT ITEM',itemForm(i)+`<div class="divider"
 },'Save Changes')}
 async function deleteItem(id){if(!confirm('Delete item?'))return;await sb.from('wlf_inventory').delete().eq('id',id);closeModal();renderInventory()}
 
-// ── ACCOUNTING ──
+// -- ACCOUNTING --
+const emptyTxState='<div class="empty-state"><p>No transactions yet</p><button class="btn primary" onclick="openAddTx(\'income\')" style="margin-top:10px">Add First Transaction</button></div>';
+
 async function renderAccounting(){
   document.getElementById('pageTitle').textContent='ACCOUNTING';
   document.getElementById('topbarActions').innerHTML=`
@@ -720,7 +724,7 @@ async function renderAccounting(){
         <button id="tab-expense" onclick="setTxTab('expense')" style="flex:1;padding:9px;font-family:var(--font-cond);font-size:12px;letter-spacing:1px;border:none;background:transparent;color:var(--red);cursor:pointer;transition:all .15s">EXPENSES</button>
       </div>
       <div id="txCards">
-        ${txs.length?txs.map(t=>txCard(t)).join(''):'<div class="empty-state"><p>No transactions yet</p><button class="btn primary" onclick="openAddTx('income')" style="margin-top:10px">Add First Transaction</button></div>'}
+        ${txs.length?txs.map(t=>txCard(t)).join(''):emptyTxState}
       </div>
     </div>
 
@@ -805,7 +809,7 @@ function openAddTx(dt){showModal('ADD TRANSACTION',`
 },'Save Transaction')}
 async function deleteTx(id){if(!confirm('Delete transaction?'))return;await sb.from('wlf_transactions').delete().eq('id',id);renderAccounting()}
 
-// ── MEMBERS ──
+// -- MEMBERS --
 async function renderMembers(){
   document.getElementById('pageTitle').textContent='MEMBERS';
   document.getElementById('topbarActions').innerHTML=`<button class="btn primary" onclick="openAddMember()" style="padding:7px 12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 4v16m8-8H4"/></svg><span class="btn-label"> Add</span></button>`;
@@ -860,7 +864,7 @@ function openEditMember(m){showModal('EDIT MEMBER',memberForm(m)+`<div class="di
 },'Save Changes')}
 async function deleteMember(id){if(!confirm('Delete member?'))return;await sb.from('wlf_members').delete().eq('id',id);closeModal();renderMembers()}
 
-// ── SESSIONS ──
+// -- SESSIONS --
 async function renderSessions(){
   document.getElementById('pageTitle').textContent='SESSIONS';
   document.getElementById('topbarActions').innerHTML=`<button class="btn primary" onclick="openAddSession()" style="padding:7px 12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 4v16m8-8H4"/></svg><span class="btn-label"> Add</span></button>`;
@@ -930,7 +934,7 @@ function openEditSession(s){showModal('EDIT SESSION',sessionForm(s)+`<div class=
 },'Save Changes')}
 async function deleteSession(id){if(!confirm('Delete session?'))return;await sb.from('wlf_sessions').delete().eq('id',id);closeModal();renderSessions()}
 
-// ── RECEIPTS ──
+// -- RECEIPTS --
 async function renderReceipts(){
   document.getElementById('pageTitle').textContent='RECEIPTS';
   document.getElementById('topbarActions').innerHTML=`<button class="btn primary" onclick="openAddReceipt()" style="padding:7px 12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 4v16m8-8H4"/></svg><span class="btn-label"> Add</span></button>`;
@@ -997,7 +1001,7 @@ function previewReceipt(input){
 }
 async function deleteReceipt(id){if(!confirm('Delete receipt?'))return;await sb.from('wlf_receipts').delete().eq('id',id);renderReceipts()}
 
-// ── MONTHLY REPORTS ──
+// -- MONTHLY REPORTS --
 async function renderReports(){
   document.getElementById('pageTitle').textContent='REPORTS';
   document.getElementById('topbarActions').innerHTML='';
@@ -1080,7 +1084,7 @@ async function loadReport(){
   }
 }
 
-// ── MODAL ──
+// -- MODAL --
 function showModal(title,body,onSave,saveLabel='Save'){
   closeModal();
   const el=document.createElement('div');el.className='modal-overlay';el.id='modalOverlay';
@@ -1096,12 +1100,12 @@ function showModal(title,body,onSave,saveLabel='Save'){
 }
 function closeModal(){const e=document.getElementById('modalOverlay');if(e)e.remove();window._receiptB64=null}
 
-// ── HELPERS ──
+// -- HELPERS --
 function v(id){const el=document.getElementById(id);return el?(el.value||''). trim():''}
 function iv(id){return parseInt(v(id))||0}
 function fv(id){return parseFloat(v(id))||0}
 
-// ── UNIFORM LEDGER ──
+// -- UNIFORM LEDGER --
 async function renderUniforms(){
   document.getElementById('pageTitle').textContent='UNIFORMS';
   document.getElementById('topbarActions').innerHTML=`<button class="btn primary" onclick="openAddUniform()" style="padding:7px 12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 4v16m8-8H4"/></svg><span class="btn-label"> Add</span></button>`;
@@ -1228,7 +1232,7 @@ function openEditUniform(i){showModal('EDIT UNIFORM',uniformForm(i)+`<div class=
 
 async function deleteUniform(id){if(!confirm('Delete this record?'))return;await sb.from('wlf_uniforms').delete().eq('id',id);closeModal();renderUniforms()}
 
-// ── AUDIT LOG PAGE ──
+// -- AUDIT LOG PAGE --
 function renderAuditLog(){
   document.getElementById('pageTitle').textContent='AUDIT LOG';
   document.getElementById('topbarActions').innerHTML=`<button class="btn" onclick="auditLog.length=0;renderAuditLog()" style="padding:7px 12px;color:var(--muted);font-size:12px">Clear Log</button>`;
@@ -1240,37 +1244,38 @@ function renderAuditLog(){
   </tbody></table></div><div style="text-align:center;font-size:11px;color:var(--dim);margin-top:8px">${auditLog.length} entries this session · Resets on page refresh</div>`;
 }
 
-// ── ROUTER ──
+// -- ROUTER --
 function render(){
   if(!sb){renderSetup();renderNav();return}
   const map={dashboard:renderDashboard,inventory:renderInventory,accounting:renderAccounting,members:renderMembers,sessions:renderSessions,receipts:renderReceipts,reports:renderReports,uniforms:renderUniforms,auditlog:renderAuditLog};
   (map[currentPage]||renderDashboard)();renderNav();
 }
 
-// ── SERVICE WORKER ──
+// -- SERVICE WORKER --
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('./sw.js').catch(()=>{});
 }
 
-// ── PWA INSTALL ──
+// -- PWA INSTALL --
 let deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;showInstallBanner()});
 function showInstallBanner(){
   if(document.getElementById('installBanner'))return;
   const b=document.createElement('div');b.id='installBanner';
-  b.style.cssText='position:fixed;bottom:calc(var(--bnav) + 10px);left:50%;transform:translateX(-50%);background:#1e1e1e;border:1px solid #333;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;z-index:8888;font-family:"Barlow Condensed",sans-serif;font-size:13px;color:#e8e8e8;box-shadow:0 4px 24px rgba(0,0,0,0.7);white-space:nowrap;max-width:calc(100vw - 32px)';
-  b.innerHTML=`<span style="color:#888">Install as app</span><button onclick="installPWA()" style="background:#f0f0f0;color:#000;border:none;border-radius:6px;padding:6px 14px;font-family:'Barlow Condensed',sans-serif;font-size:13px;cursor:pointer">Install</button><button onclick="this.parentElement.remove()" style="background:none;border:none;color:#555;cursor:pointer;font-size:20px;line-height:1;padding:0 2px">×</button>`;
+  b.style.cssText='position:fixed;bottom:calc(var(--bnav) + 10px);left:50%;transform:translateX(-50%);background:#1e1e1e;border:1px solid #333;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;z-index:8888;font-size:13px;color:#e8e8e8;box-shadow:0 4px 24px rgba(0,0,0,.7);white-space:nowrap;max-width:calc(100vw - 32px)';
+  const s=document.createElement('span');s.style.color='#888';s.textContent='Install as app';
+  const btn=document.createElement('button');btn.textContent='Install';btn.style.cssText='background:#f0f0f0;color:#000;border:none;border-radius:6px;padding:6px 14px;font-size:13px;cursor:pointer;font-family:inherit';btn.onclick=installPWA;
+  const x=document.createElement('button');x.textContent='x';x.style.cssText='background:none;border:none;color:#555;cursor:pointer;font-size:18px;line-height:1;padding:0 2px';x.onclick=()=>b.remove();
+  b.appendChild(s);b.appendChild(btn);b.appendChild(x);
   document.body.appendChild(b);
 }
 async function installPWA(){if(!deferredPrompt)return;deferredPrompt.prompt();const{outcome}=await deferredPrompt.userChoice;deferredPrompt=null;const b=document.getElementById('installBanner');if(b)b.remove()}
 window.addEventListener('appinstalled',()=>{const b=document.getElementById('installBanner');if(b)b.remove()});
 
-// ── BOOT ──
-const SUPABASE_URL='https://ccbzgwkdbnnfwfgjzycj.supabase.co';
-const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjYnpnd2tkYm5uZndmZ2p6eWNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1Mjc0MjcsImV4cCI6MjA5NTEwMzQyN30.fldakQmQz18cA17xBHzSDnMq4cg5Px8lor5Elfn_ESA';
+// -- BOOT --
 
 async function bootApp(){
-  // Always use hardcoded credentials — no setup screen needed
+  // Always use hardcoded credentials - no setup screen needed
   setStatus(null,'Connecting...');
   await initSupabase(SUPABASE_URL, SUPABASE_KEY);
 }
