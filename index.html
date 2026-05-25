@@ -541,7 +541,7 @@ ALTER TABLE wlf_members DISABLE ROW LEVEL SECURITY;
 ALTER TABLE wlf_sessions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE wlf_receipts DISABLE ROW LEVEL SECURITY;
 ALTER TABLE wlf_transactions ADD COLUMN IF NOT EXISTS payment_mode text DEFAULT 'Cash';
-CREATE TABLE IF NOT EXISTS wlf_uniforms (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, member_name text, uniform_item text NOT NULL, size text, jersey_number text, payment_status text DEFAULT 'Unpaid', delivery_status text DEFAULT 'Pending', comments text, created_at timestamptz DEFAULT now());
+CREATE TABLE IF NOT EXISTS wlf_uniforms (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, member_name text, uniform_item text NOT NULL, size text, jersey_number text, cost numeric DEFAULT 0, payment_status text DEFAULT 'Unpaid', delivery_status text DEFAULT 'Pending', comments text, created_at timestamptz DEFAULT now());
 ALTER TABLE wlf_uniforms DISABLE ROW LEVEL SECURITY;</code></div>
         <button class="btn primary" onclick="handleConnect()" style="width:100%;justify-content:center;padding:13px;font-size:15px">Connect to Supabase</button>
         <div id="setupError"></div>
@@ -1213,12 +1213,28 @@ async function renderUniforms(){
   if(error){document.getElementById('content').innerHTML=`<div class="error-msg">${error.message}</div>`;return}
   const items=data||[];
   const paid=items.filter(i=>i.payment_status==='Paid').length;
+  const unpaid=items.filter(i=>i.payment_status!=='Paid').length;
   const received=items.filter(i=>i.delivery_status==='Received').length;
+  const totalCost=items.reduce((s,i)=>s+Number(i.cost||0),0);
+  const paidCost=items.filter(i=>i.payment_status==='Paid').reduce((s,i)=>s+Number(i.cost||0),0);
+  const unpaidCost=items.filter(i=>i.payment_status!=='Paid').reduce((s,i)=>s+Number(i.cost||0),0);
   document.getElementById('content').innerHTML=`
-    <div class="stats-grid cols3">
-      <div class="stat-card"><div class="stat-label">Total Items</div><div class="stat-value">${items.length}</div></div>
-      <div class="stat-card green"><div class="stat-label">Paid</div><div class="stat-value">${paid}<span style="font-size:13px;color:var(--dim)"> / ${items.length}</span></div></div>
-      <div class="stat-card blue" style="--stat-color:var(--blue)"><div class="stat-label">Received</div><div class="stat-value" style="color:var(--blue)">${received}<span style="font-size:13px;color:var(--dim)"> / ${items.length}</span></div></div>
+    <div class="stats-grid cols3" style="margin-bottom:10px">
+      <div class="stat-card"><div class="stat-label">Total Records</div><div class="stat-value">${items.length}</div><div class="stat-sub">${received} received</div></div>
+      <div class="stat-card green"><div class="stat-label">Paid</div><div class="stat-value">${paid}<span style="font-size:13px;color:var(--dim)"> / ${items.length}</span></div><div class="stat-sub">${fmt(paidCost)}</div></div>
+      <div class="stat-card red"><div class="stat-label">Unpaid</div><div class="stat-value">${unpaid}<span style="font-size:13px;color:var(--dim)"> / ${items.length}</span></div><div class="stat-sub">${fmt(unpaidCost)}</div></div>
+    </div>
+    <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:18px">
+      <div class="stat-card amber" style="border-left:3px solid var(--amber)">
+        <div class="stat-label">Total Uniform Cost</div>
+        <div class="stat-value" style="font-size:18px;color:var(--amber)">${fmt(totalCost)}</div>
+        <div class="stat-sub">${items.filter(i=>Number(i.cost)>0).length} items with cost</div>
+      </div>
+      <div class="stat-card" style="border-left:3px solid var(--red)">
+        <div class="stat-label">Outstanding Balance</div>
+        <div class="stat-value" style="font-size:18px;color:var(--red)">${fmt(unpaidCost)}</div>
+        <div class="stat-sub">From ${unpaid} unpaid record(s)</div>
+      </div>
     </div>
     <div class="section-header"><div class="section-title">${items.length} Uniform Records</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -1234,6 +1250,7 @@ async function renderUniforms(){
             <div>
               <div class="data-card-title">${i.member_name||'Unknown'}</div>
               <div style="font-family:var(--font-cond);font-size:12px;color:var(--muted);margin-top:2px">${i.uniform_item} · Size: ${i.size||'—'} ${i.jersey_number?'· #'+i.jersey_number:''}</div>
+            ${i.cost?`<div style="font-family:var(--font-cond);font-size:13px;font-weight:600;color:var(--amber);margin-top:2px">${fmt(i.cost)}</div>`:''}
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
               <span class="badge ${i.payment_status==='Paid'?'green':'red'}">${i.payment_status}</span>
@@ -1245,18 +1262,19 @@ async function renderUniforms(){
         </div>`).join(''):'<div class="empty-state"><p>No uniform records yet</p></div>'}
     </div>
     <div class="table-wrap desktop-only">
-      <table><thead><tr><th>Name</th><th>Uniform Item</th><th>Size</th><th>Jersey #</th><th>Payment</th><th>Delivery</th><th>Comments</th><th></th></tr></thead>
+      <table><thead><tr><th>Name</th><th>Uniform Item</th><th>Size</th><th>Jersey #</th><th>Cost</th><th>Payment</th><th>Delivery</th><th>Comments</th><th></th></tr></thead>
       <tbody id="uniTbody">
         ${items.length?items.map(i=>`<tr data-payment="${i.payment_status}" data-delivery="${i.delivery_status}" data-name="${i.member_name?i.member_name.toLowerCase():''}">
           <td style="font-weight:500">${i.member_name||'—'}</td>
           <td>${i.uniform_item}</td>
           <td>${i.size||'—'}</td>
           <td style="font-family:var(--font-cond);font-size:14px">${i.jersey_number?'#'+i.jersey_number:'—'}</td>
+          <td style="font-family:var(--font-cond);font-size:13px;font-weight:600;color:var(--amber)">${i.cost?fmt(i.cost):'—'}</td>
           <td><span class="badge ${i.payment_status==='Paid'?'green':'red'}">${i.payment_status}</span></td>
           <td><span class="badge ${i.delivery_status==='Received'?'blue':'amber'}">${i.delivery_status}</span></td>
           <td style="color:var(--muted);font-size:12px;max-width:200px">${i.comments||'—'}</td>
           <td><button class="btn" onclick='openEditUniform(${JSON.stringify(i).replace(/'/g,"&apos;")})' style="padding:4px 10px;font-size:11px">Edit</button></td>
-        </tr>`).join(''):'<tr><td colspan="8"><div class="empty-state"><p>No records yet</p></div></td></tr>'}
+        </tr>`).join(''):'<tr><td colspan="9"><div class="empty-state"><p>No records yet</p></div></td></tr>'}
       </tbody></table></div>`;
 }
 
@@ -1308,6 +1326,8 @@ function uniformForm(i={}){return`
         <option value="Received" ${i.delivery_status==='Received'?'selected':''}>Received</option>
       </select></div>
   </div>
+  <div class="form-group"><label class="form-label">Unit Cost (AED)</label>
+    <input class="form-input" id="uCost" type="number" inputmode="decimal" step="0.01" min="0" value="${i.cost||0}" placeholder="0.00"/></div>
   <div class="form-group"><label class="form-label">Comments</label>
     <textarea class="form-input" id="uComments" placeholder="Optional notes...">${i.comments||''}</textarea></div>`}
 
@@ -1316,7 +1336,7 @@ function openAddUniform(){showModal('ADD UNIFORM',uniformForm(),async()=>{
   const item=v('uItem');if(!item)return toast('Please select a uniform item','error');
   const{error}=await sb.from('wlf_uniforms').insert({
     member_name:v('uName'),uniform_item:item,size:v('uSize'),jersey_number:v('uJersey'),
-    payment_status:v('uPayment'),delivery_status:v('uDelivery'),comments:v('uComments')
+    payment_status:v('uPayment'),delivery_status:v('uDelivery'),cost:fv('uCost'),comments:v('uComments')
   });
   if(error)return toast(error.message,'error');logAudit('SAVE','Uniforms','Record saved');closeModal();toast('Saved','success');renderUniforms();
 },'Save Record')}
@@ -1324,7 +1344,7 @@ function openAddUniform(){showModal('ADD UNIFORM',uniformForm(),async()=>{
 function openEditUniform(i){showModal('EDIT UNIFORM',uniformForm(i)+`<div class="divider"></div><button class="btn danger" onclick="deleteUniform('${i.id}')" style="width:100%;justify-content:center">Delete Record</button>`,async()=>{
   const{error}=await sb.from('wlf_uniforms').update({
     member_name:v('uName'),uniform_item:v('uItem'),size:v('uSize'),jersey_number:v('uJersey'),
-    payment_status:v('uPayment'),delivery_status:v('uDelivery'),comments:v('uComments')
+    payment_status:v('uPayment'),delivery_status:v('uDelivery'),cost:fv('uCost'),comments:v('uComments')
   }).eq('id',i.id);
   if(error)return toast(error.message,'error');logAudit('SAVE','Uniforms','Record saved');closeModal();toast('Saved','success');renderUniforms();
 },'Save Changes')}
