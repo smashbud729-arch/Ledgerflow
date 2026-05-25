@@ -540,6 +540,7 @@ ALTER TABLE wlf_transactions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE wlf_members DISABLE ROW LEVEL SECURITY;
 ALTER TABLE wlf_sessions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE wlf_receipts DISABLE ROW LEVEL SECURITY;
+ALTER TABLE wlf_transactions ADD COLUMN IF NOT EXISTS payment_mode text DEFAULT 'Cash';
 CREATE TABLE IF NOT EXISTS wlf_uniforms (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, member_name text, uniform_item text NOT NULL, size text, jersey_number text, payment_status text DEFAULT 'Unpaid', delivery_status text DEFAULT 'Pending', comments text, created_at timestamptz DEFAULT now());
 ALTER TABLE wlf_uniforms DISABLE ROW LEVEL SECURITY;</code></div>
         <button class="btn primary" onclick="handleConnect()" style="width:100%;justify-content:center;padding:13px;font-size:15px">Connect to Supabase</button>
@@ -702,7 +703,7 @@ async function renderAccounting(){
   document.getElementById('pageTitle').textContent='ACCOUNTING';
   document.getElementById('topbarActions').innerHTML=`
     <button class="btn" onclick="openAddTx('expense')" style="padding:7px 10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 4v16m8-8H4"/></svg><span class="btn-label"> Expense</span></button>
-    <button class="btn primary" onclick="openAddTx('income')" style="padding:7px 10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 4v16m8-8H4"/></svg><span class="btn-label"> Income</span></button>
+    <button class="btn primary" onclick="openAddTx('income')" style="padding:7px 10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 4v16m8-8H4"/></svg><span class="btn-label"> Collection</span></button>
     <button class="btn" onclick="exportCSV(window._txData||[],'transactions.csv')" style="padding:7px 10px" title="Export CSV"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg></button>`;
   document.getElementById('content').innerHTML='<div class="loading">Loading...</div>';
   const {data}=await sb.from('wlf_transactions').select('*').order('date',{ascending:false});
@@ -712,15 +713,21 @@ async function renderAccounting(){
   const income=incTxs.reduce((s,t)=>s+Number(t.amount),0);
   const expense=expTxs.reduce((s,t)=>s+Number(t.amount),0);
   const netBal=income-expense;
+  const cashCollected=incTxs.filter(t=>t.payment_mode==='Cash'||!t.payment_mode).reduce((s,t)=>s+Number(t.amount),0);
+  const bankCollected=incTxs.filter(t=>t.payment_mode==='Bank Transfer').reduce((s,t)=>s+Number(t.amount),0);
   const negWarn=netBal<0?`<div class="alert-banner">⚠️ Club balance is negative: <strong>${fmt(netBal)}</strong>. Review expenses.</div>`:'';
   const txCard=(t)=>`
     <div class="data-card tx-card-${t.type}" data-type="${t.type}" data-id="${t.id}">
       <div class="data-card-header">
-        <div>
+        <div style="flex:1;min-width:0">
           <div class="data-card-title" style="font-size:13px">${t.description||'—'}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:3px">${t.category||'—'} · ${fmtDate(t.date)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;display:flex;flex-wrap:wrap;gap:5px;align-items:center">
+            <span class="badge ${t.type==='income'?'green':'red'}" style="font-size:9px">${t.type==='income'?'Collection':'Expense'}</span>
+            ${t.payment_mode?`<span class="badge ${t.payment_mode==='Cash'?'green':'blue'}" style="font-size:9px">${t.payment_mode}</span>`:''}
+            <span>${t.category||'—'}</span><span>${fmtDate(t.date)}</span>
+          </div>
         </div>
-        <span class="amount-pill" style="color:${t.type==='income'?'var(--green)':'var(--red)'};font-size:14px">${t.type==='income'?'+':'-'}${fmt(t.amount)}</span>
+        <span class="amount-pill" style="color:${t.type==='income'?'var(--green)':'var(--red)'};font-size:14px;flex-shrink:0">${t.type==='income'?'+':'-'}${fmt(t.amount)}</span>
       </div>
       <div class="data-card-actions">
         <button class="btn" onclick="editTxById('${t.id}')" style="font-size:11px;padding:4px 12px">Edit</button>
@@ -729,17 +736,35 @@ async function renderAccounting(){
     </div>`;
   document.getElementById('content').innerHTML=`
     ${negWarn}
-    <div class="stats-grid cols3">
-      <div class="stat-card green"><div class="stat-label">Income</div><div class="stat-value" style="font-size:15px">${fmt(income)}</div><div class="stat-sub">${incTxs.length} entries</div></div>
+    <div class="stats-grid cols3" style="margin-bottom:10px">
+      <div class="stat-card green"><div class="stat-label">Collection</div><div class="stat-value" style="font-size:15px">${fmt(income)}</div><div class="stat-sub">${incTxs.length} entries</div></div>
       <div class="stat-card red"><div class="stat-label">Expenses</div><div class="stat-value" style="font-size:15px">${fmt(expense)}</div><div class="stat-sub">${expTxs.length} entries</div></div>
       <div class="stat-card ${netBal>=0?'green':'red'}"><div class="stat-label">Balance</div><div class="stat-value" style="font-size:15px">${fmt(netBal)}</div></div>
+    </div>
+    <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:18px">
+      <div class="stat-card" style="border-left:3px solid #4caf7d">
+        <div class="stat-label" style="display:flex;align-items:center;gap:6px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13"><path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+          Cash Collected
+        </div>
+        <div class="stat-value" style="font-size:17px;color:var(--green)">${fmt(cashCollected)}</div>
+        <div class="stat-sub">${incTxs.filter(t=>t.payment_mode==='Cash'||!t.payment_mode).length} transactions</div>
+      </div>
+      <div class="stat-card" style="border-left:3px solid #4090e0">
+        <div class="stat-label" style="display:flex;align-items:center;gap:6px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+          Bank Transfer
+        </div>
+        <div class="stat-value" style="font-size:17px;color:var(--blue)">${fmt(bankCollected)}</div>
+        <div class="stat-sub">${incTxs.filter(t=>t.payment_mode==='Bank Transfer').length} transactions</div>
+      </div>
     </div>
 
     <!-- MOBILE: tabbed view -->
     <div class="card-list" style="display:flex;flex-direction:column">
       <div style="display:flex;gap:0;margin-bottom:12px;background:var(--card2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
         <button id="tab-all" onclick="setTxTab('all')" style="flex:1;padding:9px;font-family:var(--font-cond);font-size:12px;letter-spacing:1px;border:none;background:var(--white);color:var(--black);cursor:pointer;transition:all .15s">ALL</button>
-        <button id="tab-income" onclick="setTxTab('income')" style="flex:1;padding:9px;font-family:var(--font-cond);font-size:12px;letter-spacing:1px;border:none;background:transparent;color:var(--green);cursor:pointer;transition:all .15s">INCOME</button>
+        <button id="tab-income" onclick="setTxTab('income')" style="flex:1;padding:9px;font-family:var(--font-cond);font-size:12px;letter-spacing:1px;border:none;background:transparent;color:var(--green);cursor:pointer;transition:all .15s">COLLECTION</button>
         <button id="tab-expense" onclick="setTxTab('expense')" style="flex:1;padding:9px;font-family:var(--font-cond);font-size:12px;letter-spacing:1px;border:none;background:transparent;color:var(--red);cursor:pointer;transition:all .15s">EXPENSES</button>
       </div>
       <div id="txCards">
@@ -752,16 +777,17 @@ async function renderAccounting(){
       <!-- INCOME COLUMN -->
       <div>
         <div class="section-header">
-          <div class="section-title" style="color:var(--green)">▲ Income</div>
+          <div class="section-title" style="color:var(--green)">▲ Collection</div>
           <div style="font-family:var(--font-cond);font-size:12px;color:var(--green)">${fmt(income)}</div>
         </div>
         <div class="table-wrap">
-          <table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th></th></tr></thead>
+          <table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Mode</th><th>Amount</th><th></th></tr></thead>
           <tbody id="incTbody">
             ${incTxs.length?incTxs.map(t=>`<tr>
               <td style="color:var(--muted);font-size:11px;white-space:nowrap">${fmtDate(t.date)}</td>
               <td style="font-weight:500;font-size:13px">${t.description||'—'}</td>
               <td style="font-size:12px;color:var(--muted)">${t.category||'—'}</td>
+              <td>${t.payment_mode?`<span class="badge ${t.payment_mode==='Cash'?'green':'blue'}" style="font-size:9px">${t.payment_mode}</span>`:''}</td>
               <td style="font-family:var(--font-cond);font-size:14px;font-weight:600;color:var(--green)">+${fmt(t.amount)}</td>
               <td style="display:flex;gap:4px"><button class="btn" onclick="editTxById('${t.id}')" style="padding:3px 7px;font-size:10px">Edit</button><button class="btn danger" onclick="deleteTx('${t.id}')" style="padding:3px 7px;font-size:10px">Del</button></td>
             </tr>`).join(''):`<tr><td colspan="5"><div class="empty-state" style="padding:20px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24" style="opacity:.2;margin:0 auto 6px;display:block"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V7m0 9v1"/></svg><p>No income yet</p></div></td></tr>`}
@@ -811,7 +837,7 @@ function filterTxType(type){
 function openAddTx(dt){showModal('ADD TRANSACTION',`
   <div class="grid-2">
     <div class="form-group"><label class="form-label">Type</label>
-      <select class="form-input" id="tType"><option value="income" ${dt==='income'?'selected':''}>Income</option><option value="expense" ${dt==='expense'?'selected':''}>Expense</option></select></div>
+      <select class="form-input" id="tType"><option value="income" ${dt==='income'?'selected':''}>Collection</option><option value="expense" ${dt==='expense'?'selected':''}>Expense</option></select></div>
     <div class="form-group"><label class="form-label">Amount (AED) *</label><input class="form-input" id="tAmt" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"/></div>
   </div>
   <div class="form-group"><label class="form-label">Description *</label><input class="form-input" id="tDesc" placeholder="e.g. Monthly membership fee"/></div>
@@ -820,18 +846,28 @@ function openAddTx(dt){showModal('ADD TRANSACTION',`
       <select class="form-input" id="tCat">${['','Membership Fees','Court Booking','Tournament Entry','Sponsorship','Equipment Purchase','Venue Rent','Coaching Fees','Uniforms','Utilities','Other'].map(c=>`<option value="${c}">${c||'No Category'}</option>`).join('')}</select></div>
     <div class="form-group"><label class="form-label">Date</label><input class="form-input" id="tDate" type="date" value="${new Date().toISOString().split('T')[0]}"/></div>
   </div>
+  <div class="form-group"><label class="form-label">Mode of Payment</label>
+    <select class="form-input" id="tPayMode">
+      <option value="Cash">Cash</option>
+      <option value="Bank Transfer">Bank Transfer</option>
+    </select></div>
   <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="tNotes" placeholder="Optional"/></div>
 `,async()=>{
-  const desc=v('tDesc'),amt=fv('tAmt');if(!desc||!amt)return toast('Description and amount required','error');
-  const{error}=await sb.from('wlf_transactions').insert({type:v('tType'),amount:amt,description:desc,category:v('tCat'),date:v('tDate'),notes:v('tNotes')});
-  if(error)return alert(error.message);closeModal();renderAccounting();
+  if(!requireField('tDesc','Description is required'))return;
+  if(!requireField('tAmt','Amount is required'))return;
+  const amt=fv('tAmt');
+  const payload={type:v('tType'),amount:amt,description:v('tDesc'),category:v('tCat'),date:v('tDate'),notes:v('tNotes'),payment_mode:v('tPayMode')};
+  const{error}=await sb.from('wlf_transactions').insert(payload);
+  if(error)return toast(error.message,'error');
+  logAudit('CREATE','Accounting',payload.type+' AED'+amt+' via '+payload.payment_mode+' - '+payload.description);
+  closeModal();toast('Transaction saved','success');renderAccounting();
 },'Save Transaction')}
 function openEditTx(t){
   showModal('EDIT TRANSACTION',`
     <div class="grid-2">
       <div class="form-group"><label class="form-label">Type</label>
         <select class="form-input" id="tType">
-          <option value="income" ${t.type==='income'?'selected':''}>Income</option>
+          <option value="income" ${t.type==='income'?'selected':''}>Collection</option>
           <option value="expense" ${t.type==='expense'?'selected':''}>Expense</option>
         </select></div>
       <div class="form-group"><label class="form-label">Amount (AED) *</label>
@@ -845,6 +881,11 @@ function openEditTx(t){
       <div class="form-group"><label class="form-label">Date</label>
         <input class="form-input" id="tDate" type="date" value="${t.date||todayStr()}"/></div>
     </div>
+    <div class="form-group"><label class="form-label">Mode of Payment</label>
+      <select class="form-input" id="tPayMode">
+        <option value="Cash" ${(t.payment_mode||'Cash')==='Cash'?'selected':''}>Cash</option>
+        <option value="Bank Transfer" ${t.payment_mode==='Bank Transfer'?'selected':''}>Bank Transfer</option>
+      </select></div>
     <div class="form-group"><label class="form-label">Notes</label>
       <input class="form-input" id="tNotes" value="${t.notes||''}" placeholder="Optional"/></div>
     <div class="divider"></div>
@@ -852,10 +893,10 @@ function openEditTx(t){
   `,async()=>{
     if(!requireField('tDesc','Description is required'))return;
     if(!requireField('tAmt','Amount is required'))return;
-    const payload={type:v('tType'),amount:fv('tAmt'),description:v('tDesc'),category:v('tCat'),date:v('tDate'),notes:v('tNotes')};
+    const payload={type:v('tType'),amount:fv('tAmt'),description:v('tDesc'),category:v('tCat'),date:v('tDate'),notes:v('tNotes'),payment_mode:v('tPayMode')};
     const{error}=await sb.from('wlf_transactions').update(payload).eq('id',t.id);
     if(error)return toast(error.message,'error');
-    logAudit('UPDATE','Accounting',`Updated "${payload.description}" ${payload.type} AED${payload.amount}`);
+    logAudit('UPDATE','Accounting','Updated "'+payload.description+'" '+payload.type+' AED'+payload.amount+' via '+payload.payment_mode);
     closeModal();toast('Transaction updated','success');renderAccounting();
   },'Save Changes');
 }
