@@ -180,6 +180,16 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 tr.accent-red td:first-child{border-left:3px solid var(--red)}
 tr.accent-amber td:first-child{border-left:3px solid var(--amber)}
 .data-card.accent-red{border-left:3px solid var(--red)}.data-card.accent-amber{border-left:3px solid var(--amber)}
+/* REIMBURSEMENT BADGE */
+.reimb-badge{display:inline-flex;align-items:center;gap:4px;background:#1a2535;border:1px solid #2a4060;color:#6ab0f5;border-radius:4px;padding:2px 7px;font-family:var(--font-cond);font-size:10px;letter-spacing:.5px}
+.reimb-badge.done{background:#1a3328;border-color:#2a5040;color:var(--green)}
+.reimb-toggle{cursor:pointer;background:none;border:none;font-family:var(--font-cond);font-size:10px;letter-spacing:.5px;padding:2px 6px;border-radius:3px;transition:all .15s}
+.cash-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px}
+.cash-breakdown{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.cash-row{display:flex;justify-content:space-between;align-items:center;font-size:12px}
+.cash-row-label{color:var(--muted);font-family:var(--font-cond);font-size:11px;letter-spacing:.5px}
+.cash-row-val{font-family:var(--font-cond);font-size:13px;font-weight:600}
+
 /* FOLDER / GROUP SECTIONS */
 .folder{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px}
 .folder-header{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;cursor:pointer;user-select:none;transition:background .15s;gap:10px}
@@ -567,6 +577,8 @@ ALTER TABLE wlf_members DISABLE ROW LEVEL SECURITY;
 ALTER TABLE wlf_sessions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE wlf_receipts DISABLE ROW LEVEL SECURITY;
 ALTER TABLE wlf_transactions ADD COLUMN IF NOT EXISTS payment_mode text DEFAULT 'Cash';
+ALTER TABLE wlf_transactions ADD COLUMN IF NOT EXISTS is_reimbursable boolean DEFAULT false;
+ALTER TABLE wlf_transactions ADD COLUMN IF NOT EXISTS is_reimbursed boolean DEFAULT false;
 CREATE TABLE IF NOT EXISTS wlf_uniforms (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, member_name text, uniform_item text NOT NULL, size text, jersey_number text, cost numeric DEFAULT 0, payment_status text DEFAULT 'Unpaid', delivery_status text DEFAULT 'Pending', comments text, created_at timestamptz DEFAULT now());
 ALTER TABLE wlf_uniforms DISABLE ROW LEVEL SECURITY;</code></div>
         <button class="btn primary" onclick="handleConnect()" style="width:100%;justify-content:center;padding:13px;font-size:15px">Connect to Supabase</button>
@@ -741,6 +753,14 @@ async function renderAccounting(){
   const netBal=income-expense;
   const cashCollected=incTxs.filter(t=>t.payment_mode==='Cash'||!t.payment_mode).reduce((s,t)=>s+Number(t.amount),0);
   const bankCollected=incTxs.filter(t=>t.payment_mode==='Bank Transfer').reduce((s,t)=>s+Number(t.amount),0);
+  // Reimbursement tracking
+  const reimbPending=expTxs.filter(t=>t.is_reimbursable&&!t.is_reimbursed);
+  const reimbDone=expTxs.filter(t=>t.is_reimbursable&&t.is_reimbursed);
+  const reimbPendingAmt=reimbPending.reduce((s,t)=>s+Number(t.amount),0);
+  const reimbDoneAmt=reimbDone.reduce((s,t)=>s+Number(t.amount),0);
+  // Cash on hand = cash collected - cash expenses (non-reimbursable or already reimbursed) - pending reimbursements
+  const cashExpenses=expTxs.filter(t=>t.payment_mode==='Cash'||!t.payment_mode).reduce((s,t)=>s+Number(t.amount),0);
+  const cashOnHand=cashCollected-cashExpenses;
   const negWarn=netBal<0?'<div class="alert-banner">⚠️ Club balance is negative: <strong>'+fmt(netBal)+'</strong>. Review expenses.</div>':'';
 
   // Group transactions by category
@@ -761,6 +781,7 @@ async function renderAccounting(){
           <div class="data-card-title" style="font-size:13px">${t.description||'—'}</div>
           <div style="font-size:11px;color:var(--muted);margin-top:4px;display:flex;flex-wrap:wrap;gap:4px;align-items:center">
             ${t.payment_mode?'<span class="badge '+(t.payment_mode==='Cash'?'green':'blue')+'" style="font-size:9px">'+t.payment_mode+'</span>':''}
+            ${t.is_reimbursable?'<span class="reimb-badge '+(t.is_reimbursed?'done':'')+'">'+(t.is_reimbursed?'✓ Reimbursed':'⏳ Pending Reimb.')+'</span>':''}
             <span>${fmtDate(t.date)}</span>
           </div>
         </div>
@@ -843,7 +864,7 @@ async function renderAccounting(){
       <div class="stat-card red"><div class="stat-label">Expenses</div><div class="stat-value" style="font-size:15px">${fmt(expense)}</div><div class="stat-sub">${expTxs.length} entries</div></div>
       <div class="stat-card ${netBal>=0?'green':'red'}"><div class="stat-label">Balance</div><div class="stat-value" style="font-size:15px">${fmt(netBal)}</div></div>
     </div>
-    <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:18px">
+    <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:10px">
       <div class="stat-card" style="border-left:3px solid #4caf7d">
         <div class="stat-label" style="display:flex;align-items:center;gap:6px">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13"><path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>Cash Collected
@@ -859,6 +880,31 @@ async function renderAccounting(){
         <div class="stat-sub">${incTxs.filter(t=>t.payment_mode==='Bank Transfer').length} transactions</div>
       </div>
     </div>
+
+    <!-- Cash on Hand + Reimbursement Summary -->
+    <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:10px">
+      <div class="stat-card" style="border-left:3px solid var(--amber)">
+        <div class="stat-label" style="display:flex;align-items:center;gap:6px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13"><path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>Cash on Hand
+        </div>
+        <div class="stat-value" style="font-size:17px;color:${cashOnHand>=0?'var(--amber)':'var(--red)'}">${fmt(cashOnHand)}</div>
+        <div class="cash-breakdown">
+          <div class="cash-row"><span class="cash-row-label">Cash In</span><span class="cash-row-val" style="color:var(--green)">+${fmt(cashCollected)}</span></div>
+          <div class="cash-row"><span class="cash-row-label">Cash Out</span><span class="cash-row-val" style="color:var(--red)">-${fmt(cashExpenses)}</span></div>
+        </div>
+      </div>
+      <div class="stat-card" style="border-left:3px solid ${reimbPendingAmt>0?'var(--red)':'var(--green)'}">
+        <div class="stat-label" style="display:flex;align-items:center;gap:6px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13"><path d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z"/></svg>Reimbursements
+        </div>
+        <div class="stat-value" style="font-size:17px;color:${reimbPendingAmt>0?'var(--red)':'var(--green)'}">${fmt(reimbPendingAmt)}</div>
+        <div class="cash-breakdown">
+          <div class="cash-row"><span class="cash-row-label">Pending</span><span class="cash-row-val" style="color:var(--red)">${reimbPending.length} · ${fmt(reimbPendingAmt)}</span></div>
+          <div class="cash-row"><span class="cash-row-label">Reimbursed</span><span class="cash-row-val" style="color:var(--green)">${reimbDone.length} · ${fmt(reimbDoneAmt)}</span></div>
+        </div>
+      </div>
+    </div>
+    ${reimbPendingAmt>0?'<div class="alert-banner" style="margin-bottom:10px">💸 '+reimbPending.length+' expense(s) awaiting reimbursement totalling <strong>'+fmt(reimbPendingAmt)+'</strong></div>':''}
 
     <!-- MOBILE: tabbed folders -->
     <div class="card-list" style="display:flex;flex-direction:column">
@@ -919,7 +965,7 @@ function filterTxType(type){
 function openAddTx(dt){showModal('ADD TRANSACTION',`
   <div class="grid-2">
     <div class="form-group"><label class="form-label">Type</label>
-      <select class="form-input" id="tType"><option value="income" ${dt==='income'?'selected':''}>Collection</option><option value="expense" ${dt==='expense'?'selected':''}>Expense</option></select></div>
+      <select class="form-input" id="tType" onchange="document.getElementById('reimbRow').style.display=this.value==='expense'?'block':'none'"><option value="income" ${dt==='income'?'selected':''}>Collection</option><option value="expense" ${dt==='expense'?'selected':''}>Expense</option></select></div>
     <div class="form-group"><label class="form-label">Amount (AED) *</label><input class="form-input" id="tAmt" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"/></div>
   </div>
   <div class="form-group"><label class="form-label">Description *</label><input class="form-input" id="tDesc" placeholder="e.g. Monthly membership fee"/></div>
@@ -933,12 +979,27 @@ function openAddTx(dt){showModal('ADD TRANSACTION',`
       <option value="Cash">Cash</option>
       <option value="Bank Transfer">Bank Transfer</option>
     </select></div>
+  <div id="reimbRow" style="display:${dt==='expense'?'block':'none'}">
+    <div class="form-group"><label class="form-label" style="display:flex;align-items:center;gap:8px">
+      <input type="checkbox" id="tReimbursable" style="width:16px;height:16px;accent-color:var(--white)" onchange="document.getElementById('reimbStatusRow').style.display=this.checked?'block':'none'"/>
+      Personal Expense (Reimbursable)
+    </label></div>
+    <div id="reimbStatusRow" style="display:none" class="form-group">
+      <label class="form-label">Reimbursement Status</label>
+      <select class="form-input" id="tReimbursed">
+        <option value="false">Pending Reimbursement</option>
+        <option value="true">Reimbursed</option>
+      </select>
+    </div>
+  </div>
   <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="tNotes" placeholder="Optional"/></div>
 `,async()=>{
   if(!requireField('tDesc','Description is required'))return;
   if(!requireField('tAmt','Amount is required'))return;
   const amt=fv('tAmt');
-  const payload={type:v('tType'),amount:amt,description:v('tDesc'),category:v('tCat'),date:v('tDate'),notes:v('tNotes'),payment_mode:v('tPayMode')};
+  const isReimb=document.getElementById('tReimbursable')&&document.getElementById('tReimbursable').checked;
+  const isReimbursed=isReimb&&v('tReimbursed')==='true';
+  const payload={type:v('tType'),amount:amt,description:v('tDesc'),category:v('tCat'),date:v('tDate'),notes:v('tNotes'),payment_mode:v('tPayMode'),is_reimbursable:isReimb,is_reimbursed:isReimbursed};
   const{error}=await sb.from('wlf_transactions').insert(payload);
   if(error)return toast(error.message,'error');
   logAudit('CREATE','Accounting',payload.type+' AED'+amt+' via '+payload.payment_mode+' - '+payload.description);
@@ -968,14 +1029,29 @@ function openEditTx(t){
         <option value="Cash" ${(t.payment_mode||'Cash')==='Cash'?'selected':''}>Cash</option>
         <option value="Bank Transfer" ${t.payment_mode==='Bank Transfer'?'selected':''}>Bank Transfer</option>
       </select></div>
-    <div class="form-group"><label class="form-label">Notes</label>
+    <div style="border:1px solid var(--border);border-radius:6px;padding:12px;background:var(--darker)">
+      <div class="form-group" style="margin-bottom:8px"><label class="form-label" style="display:flex;align-items:center;gap:8px;margin-bottom:0">
+        <input type="checkbox" id="tReimbursable" ${t.is_reimbursable?'checked':''} style="width:16px;height:16px;accent-color:var(--white)" onchange="document.getElementById('editReimbRow').style.display=this.checked?'block':'none'"/>
+        Personal Expense (Reimbursable)
+      </label></div>
+      <div id="editReimbRow" style="display:${t.is_reimbursable?'block':'none'}">
+        <div class="form-group" style="margin-bottom:0"><label class="form-label">Reimbursement Status</label>
+          <select class="form-input" id="tReimbursed">
+            <option value="false" ${!t.is_reimbursed?'selected':''}>Pending Reimbursement</option>
+            <option value="true" ${t.is_reimbursed?'selected':''}>Reimbursed</option>
+          </select></div>
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:12px"><label class="form-label">Notes</label>
       <input class="form-input" id="tNotes" value="${t.notes||''}" placeholder="Optional"/></div>
     <div class="divider"></div>
     <button class="btn danger" onclick="deleteTx('${t.id}')" style="width:100%;justify-content:center">Delete Transaction</button>
   `,async()=>{
     if(!requireField('tDesc','Description is required'))return;
     if(!requireField('tAmt','Amount is required'))return;
-    const payload={type:v('tType'),amount:fv('tAmt'),description:v('tDesc'),category:v('tCat'),date:v('tDate'),notes:v('tNotes'),payment_mode:v('tPayMode')};
+    const isReimb=document.getElementById('tReimbursable')&&document.getElementById('tReimbursable').checked;
+    const isReimbursed=isReimb&&v('tReimbursed')==='true';
+    const payload={type:v('tType'),amount:fv('tAmt'),description:v('tDesc'),category:v('tCat'),date:v('tDate'),notes:v('tNotes'),payment_mode:v('tPayMode'),is_reimbursable:isReimb,is_reimbursed:isReimbursed};
     const{error}=await sb.from('wlf_transactions').update(payload).eq('id',t.id);
     if(error)return toast(error.message,'error');
     logAudit('UPDATE','Accounting','Updated "'+payload.description+'" '+payload.type+' AED'+payload.amount+' via '+payload.payment_mode);
