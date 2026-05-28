@@ -620,7 +620,7 @@ async function renderDashboard(){
       <div class="stat-card ${balance>=0?'green':'red'}"><div class="stat-label">Balance</div><div class="stat-value" style="font-size:16px">${fmt(balance)}</div></div>
       <div class="stat-card"><div class="stat-label">Members</div><div class="stat-value">${activeMembers}<span style="font-size:13px;color:var(--dim)"> active</span></div></div>
       <div class="stat-card green"><div class="stat-label">Income</div><div class="stat-value" style="font-size:16px">${fmt(income)}</div></div>
-      <div class="stat-card red"><div class="stat-label">Expenses</div><div class="stat-value" style="font-size:16px">${fmt(expense)}</div></div>
+      <div class="stat-card red"><div class="stat-label">Cash Out</div><div class="stat-value" style="font-size:16px">${fmt(expense)}</div></div>
     </div>
     ${lowStock.length?`<div class="alert-banner">⚠️ ${lowStock.length} item(s) low on stock — <span onclick="navigate('inventory')" style="cursor:pointer;text-decoration:underline;margin-left:4px">View inventory</span></div>`:''}
     <div class="chart-card"><div class="chart-title">Income vs Expenses</div><canvas id="monthChart" height="160"></canvas></div>
@@ -740,8 +740,8 @@ const emptyTxState='<div class="empty-state"><p>No transactions yet</p><button c
 async function renderAccounting(){
   document.getElementById('pageTitle').textContent='ACCOUNTING';
   document.getElementById('topbarActions').innerHTML=`
-    <button class="btn" onclick="openAddTx('expense')" style="padding:7px 10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 4v16m8-8H4"/></svg><span class="btn-label"> Expense</span></button>
-    <button class="btn primary" onclick="openAddTx('income')" style="padding:7px 10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 4v16m8-8H4"/></svg><span class="btn-label"> Collection</span></button>
+    <button class="btn" onclick="openAddTx('expense')" style="padding:7px 10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 4v16m8-8H4"/></svg><span class="btn-label"> Cash Out</span></button>
+    <button class="btn primary" onclick="openAddTx('income')" style="padding:7px 10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 4v16m8-8H4"/></svg><span class="btn-label"> Cash In</span></button>
     <button class="btn" onclick="exportCSV(window._txData||[],'transactions.csv')" style="padding:7px 10px" title="Export CSV"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg></button>`;
   document.getElementById('content').innerHTML='<div class="loading">Loading...</div>';
   const {data}=await sb.from('wlf_transactions').select('*').order('date',{ascending:false});
@@ -860,8 +860,8 @@ async function renderAccounting(){
   document.getElementById('content').innerHTML=`
     ${negWarn}
     <div class="stats-grid cols3" style="margin-bottom:10px">
-      <div class="stat-card green"><div class="stat-label">Collection</div><div class="stat-value" style="font-size:15px">${fmt(income)}</div><div class="stat-sub">${incTxs.length} entries</div></div>
-      <div class="stat-card red"><div class="stat-label">Expenses</div><div class="stat-value" style="font-size:15px">${fmt(expense)}</div><div class="stat-sub">${expTxs.length} entries</div></div>
+      <div class="stat-card green"><div class="stat-label">Cash In</div><div class="stat-value" style="font-size:15px">${fmt(income)}</div><div class="stat-sub">${incTxs.length} entries</div></div>
+      <div class="stat-card red"><div class="stat-label">Cash Out</div><div class="stat-value" style="font-size:15px">${fmt(expense)}</div><div class="stat-sub">${expTxs.length} entries</div></div>
       <div class="stat-card ${netBal>=0?'green':'red'}"><div class="stat-label">Balance</div><div class="stat-value" style="font-size:15px">${fmt(netBal)}</div></div>
     </div>
     <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:10px">
@@ -904,14 +904,14 @@ async function renderAccounting(){
         </div>
       </div>
     </div>
-    ${reimbPendingAmt>0?'<div class="alert-banner" style="margin-bottom:10px">💸 '+reimbPending.length+' expense(s) awaiting reimbursement totalling <strong>'+fmt(reimbPendingAmt)+'</strong></div>':''}
+    ${reimbPendingAmt>0?'<div class="alert-banner" style="margin-bottom:10px">💸 '+reimbPending.length+' cash out item(s) awaiting reimbursement totalling <strong>'+fmt(reimbPendingAmt)+'</strong></div>':''}
 
     <!-- MOBILE: tabbed folders -->
     <div class="card-list" style="display:flex;flex-direction:column">
       <div style="display:flex;gap:0;margin-bottom:14px;background:var(--card2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
         <button id="tab-all" onclick="setTxTab('all')" style="flex:1;padding:9px;font-family:var(--font-cond);font-size:12px;letter-spacing:1px;border:none;background:var(--white);color:var(--black);cursor:pointer;transition:all .15s">ALL</button>
-        <button id="tab-income" onclick="setTxTab('income')" style="flex:1;padding:9px;font-family:var(--font-cond);font-size:12px;letter-spacing:1px;border:none;background:transparent;color:var(--green);cursor:pointer;transition:all .15s">COLLECTION</button>
-        <button id="tab-expense" onclick="setTxTab('expense')" style="flex:1;padding:9px;font-family:var(--font-cond);font-size:12px;letter-spacing:1px;border:none;background:transparent;color:var(--red);cursor:pointer;transition:all .15s">EXPENSES</button>
+        <button id="tab-income" onclick="setTxTab('income')" style="flex:1;padding:9px;font-family:var(--font-cond);font-size:12px;letter-spacing:1px;border:none;background:transparent;color:var(--green);cursor:pointer;transition:all .15s">CASH IN</button>
+        <button id="tab-expense" onclick="setTxTab('expense')" style="flex:1;padding:9px;font-family:var(--font-cond);font-size:12px;letter-spacing:1px;border:none;background:transparent;color:var(--red);cursor:pointer;transition:all .15s">CASH OUT</button>
       </div>
       <div id="tab-all-content">${buildFolders(txs,'all')}</div>
       <div id="tab-income-content" style="display:none">${buildFolders(incTxs,'income')}</div>
@@ -922,14 +922,14 @@ async function renderAccounting(){
     <div class="desktop-only" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
       <div>
         <div class="section-header">
-          <div class="section-title" style="color:var(--green)">▲ Collection</div>
+          <div class="section-title" style="color:var(--green)">▲ Cash In</div>
           <div style="font-family:var(--font-cond);font-size:12px;color:var(--green)">${fmt(income)} · ${incTxs.length} entries</div>
         </div>
         <div id="incFolders">${buildDesktopFolders(incTxs,'income')}</div>
       </div>
       <div>
         <div class="section-header">
-          <div class="section-title" style="color:var(--red)">▼ Expenses</div>
+          <div class="section-title" style="color:var(--red)">▼ Cash Out</div>
           <div style="font-family:var(--font-cond);font-size:12px;color:var(--red)">${fmt(expense)} · ${expTxs.length} entries</div>
         </div>
         <div id="expFolders">${buildDesktopFolders(expTxs,'expense')}</div>
@@ -965,7 +965,7 @@ function filterTxType(type){
 function openAddTx(dt){showModal('ADD TRANSACTION',`
   <div class="grid-2">
     <div class="form-group"><label class="form-label">Type</label>
-      <select class="form-input" id="tType" onchange="document.getElementById('reimbRow').style.display=this.value==='expense'?'block':'none'"><option value="income" ${dt==='income'?'selected':''}>Collection</option><option value="expense" ${dt==='expense'?'selected':''}>Expense</option></select></div>
+      <select class="form-input" id="tType" onchange="document.getElementById('reimbRow').style.display=this.value==='expense'?'block':'none'"><option value="income" ${dt==='income'?'selected':''}>Cash In</option><option value="expense" ${dt==='expense'?'selected':''}>Cash Out</option></select></div>
     <div class="form-group"><label class="form-label">Amount (AED) *</label><input class="form-input" id="tAmt" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"/></div>
   </div>
   <div class="form-group"><label class="form-label">Description *</label><input class="form-input" id="tDesc" placeholder="e.g. Monthly membership fee"/></div>
@@ -1010,8 +1010,8 @@ function openEditTx(t){
     <div class="grid-2">
       <div class="form-group"><label class="form-label">Type</label>
         <select class="form-input" id="tType">
-          <option value="income" ${t.type==='income'?'selected':''}>Collection</option>
-          <option value="expense" ${t.type==='expense'?'selected':''}>Expense</option>
+          <option value="income" ${t.type==='income'?'selected':''}>Cash In</option>
+          <option value="expense" ${t.type==='expense'?'selected':''}>Cash Out</option>
         </select></div>
       <div class="form-group"><label class="form-label">Amount (AED) *</label>
         <input class="form-input" id="tAmt" type="number" inputmode="decimal" step="0.01" min="0" value="${t.amount}"/></div>
@@ -1301,7 +1301,7 @@ async function loadReport(){
     </div>
     <div class="report-grid">
       <div class="stat-card green"><div class="stat-label">Income</div><div class="stat-value" style="font-size:15px">${fmt(income)}</div></div>
-      <div class="stat-card red"><div class="stat-label">Expenses</div><div class="stat-value" style="font-size:15px">${fmt(expense)}</div></div>
+      <div class="stat-card red"><div class="stat-label">Cash Out</div><div class="stat-value" style="font-size:15px">${fmt(expense)}</div></div>
       <div class="stat-card ${net>=0?'green':'red'}"><div class="stat-label">Net</div><div class="stat-value" style="font-size:15px">${fmt(net)}</div></div>
     </div>
     <div class="two-col">
