@@ -617,9 +617,9 @@ async function renderDashboard(){
 
   document.getElementById('content').innerHTML=`
     <div class="stats-grid">
-      <div class="stat-card ${balance>=0?'green':'red'}"><div class="stat-label">Net</div><div class="stat-value" style="font-size:16px">${fmt(balance)}</div></div>
+      <div class="stat-card ${balance>=0?'green':'red'}"><div class="stat-label">Balance</div><div class="stat-value" style="font-size:16px">${fmt(balance)}</div></div>
       <div class="stat-card"><div class="stat-label">Members</div><div class="stat-value">${activeMembers}<span style="font-size:13px;color:var(--dim)"> active</span></div></div>
-      <div class="stat-card green"><div class="stat-label">Cash In</div><div class="stat-value" style="font-size:16px">${fmt(income)}</div></div>
+      <div class="stat-card green"><div class="stat-label">Income</div><div class="stat-value" style="font-size:16px">${fmt(income)}</div></div>
       <div class="stat-card red"><div class="stat-label">Cash Out</div><div class="stat-value" style="font-size:16px">${fmt(expense)}</div></div>
     </div>
     ${lowStock.length?`<div class="alert-banner">⚠️ ${lowStock.length} item(s) low on stock — <span onclick="navigate('inventory')" style="cursor:pointer;text-decoration:underline;margin-left:4px">View inventory</span></div>`:''}
@@ -1300,13 +1300,13 @@ async function loadReport(){
       <div style="color:var(--dim);font-size:11px;font-family:var(--font-cond);letter-spacing:1px">WHACK UAE · LEDGERFLOW</div>
     </div>
     <div class="report-grid">
-      <div class="stat-card green"><div class="stat-label">Cash In</div><div class="stat-value" style="font-size:15px">${fmt(income)}</div></div>
+      <div class="stat-card green"><div class="stat-label">Income</div><div class="stat-value" style="font-size:15px">${fmt(income)}</div></div>
       <div class="stat-card red"><div class="stat-label">Cash Out</div><div class="stat-value" style="font-size:15px">${fmt(expense)}</div></div>
       <div class="stat-card ${net>=0?'green':'red'}"><div class="stat-label">Net</div><div class="stat-value" style="font-size:15px">${fmt(net)}</div></div>
     </div>
     <div class="two-col">
       <div>
-        <div class="section-header"><div class="section-title">Cash In</div></div>
+        <div class="section-header"><div class="section-title">Income</div></div>
         <div class="table-wrap"><table style="min-width:0"><thead><tr><th>Category</th><th>Amount</th></tr></thead><tbody>
           ${Object.keys(catIncome).length?Object.entries(catIncome).sort((a,b)=>b[1]-a[1]).map(([c,a])=>`<tr><td style="font-size:12px">${c}</td><td style="color:var(--green);font-family:var(--font-cond);font-size:13px;font-weight:600">${fmt(a)}</td></tr>`).join(''):'<tr><td colspan="2"><div class="empty-state" style="padding:12px"><p>None</p></div></td></tr>'}
         </tbody></table></div>
@@ -1362,20 +1362,152 @@ function v(id){const el=document.getElementById(id);return el?(el.value||''). tr
 function iv(id){return parseInt(v(id))||0}
 function fv(id){return parseFloat(v(id))||0}
 
+// -- UNIFORM FOLDERS (Supabase) --
+async function openAddFolder(){
+  const{data:folders}=await sb.from('wlf_uniform_folders').select('name');
+  showModal('NEW FOLDER',`
+    <div class="form-group"><label class="form-label">Folder Name *</label>
+      <input class="form-input" id="folderName" placeholder="e.g. Season 2025, Men's Team, Reserves..."/></div>`,
+  async()=>{
+    const name=v('folderName');if(!name)return toast('Folder name is required','error');
+    if((folders||[]).find(f=>f.name.toLowerCase()===name.toLowerCase()))return toast('A folder with that name already exists','error');
+    const{error}=await sb.from('wlf_uniform_folders').insert({name});
+    if(error)return toast(error.message,'error');
+    logAudit('CREATE','Uniforms','Folder created: '+name);
+    closeModal();toast('Folder created','success');renderUniforms();
+  },'Create Folder');
+  setTimeout(()=>{const el=document.getElementById('folderName');if(el)el.focus()},100);
+}
+
+async function openRenameFolder(fid,currentName){
+  showModal('RENAME FOLDER',`
+    <div class="form-group"><label class="form-label">Folder Name *</label>
+      <input class="form-input" id="folderRename" value="${currentName}"/></div>`,
+  async()=>{
+    const name=v('folderRename');if(!name)return toast('Name required','error');
+    const{error}=await sb.from('wlf_uniform_folders').update({name}).eq('id',fid);
+    if(error)return toast(error.message,'error');
+    closeModal();toast('Renamed','success');renderUniforms();
+  },'Save');
+  setTimeout(()=>{const el=document.getElementById('folderRename');if(el){el.focus();el.select()}},100);
+}
+
+async function deleteFolder(fid){
+  if(!confirm('Delete this folder? Records inside will move to Unassigned.'))return;
+  await sb.from('wlf_uniforms').update({folder_id:null}).eq('folder_id',fid);
+  const{error}=await sb.from('wlf_uniform_folders').delete().eq('id',fid);
+  if(error)return toast(error.message,'error');
+  logAudit('DELETE','Uniforms','Folder deleted');
+  toast('Folder deleted','success');renderUniforms();
+}
+
 // -- UNIFORM LEDGER --
 async function renderUniforms(){
   document.getElementById('pageTitle').textContent='UNIFORMS';
-  document.getElementById('topbarActions').innerHTML=`<button class="btn primary" onclick="openAddUniform()" style="padding:7px 12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 4v16m8-8H4"/></svg><span class="btn-label"> Add</span></button>`;
+  document.getElementById('topbarActions').innerHTML=`
+    <button class="btn" onclick="openAddFolder()" style="padding:7px 10px" title="New Folder">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/><path d="M12 11v6m-3-3h6"/></svg>
+      <span class="btn-label"> Folder</span>
+    </button>
+    <button class="btn primary" onclick="openAddUniform()" style="padding:7px 10px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 4v16m8-8H4"/></svg>
+      <span class="btn-label"> Add</span>
+    </button>`;
   document.getElementById('content').innerHTML='<div class="loading">Loading...</div>';
-  const {data,error}=await sb.from('wlf_uniforms').select('*').order('created_at',{ascending:false});
+  const [{data,error},{data:foldersRaw}]=await Promise.all([
+    sb.from('wlf_uniforms').select('*').order('created_at',{ascending:false}),
+    sb.from('wlf_uniform_folders').select('*').order('created_at',{ascending:true})
+  ]);
   if(error){document.getElementById('content').innerHTML=`<div class="error-msg">${error.message}</div>`;return}
   const items=data||[];
+  const folders=foldersRaw||[];
   const paid=items.filter(i=>i.payment_status==='Paid').length;
   const unpaid=items.filter(i=>i.payment_status!=='Paid').length;
   const received=items.filter(i=>i.delivery_status==='Received').length;
   const totalCost=items.reduce((s,i)=>s+Number(i.cost||0),0);
   const paidCost=items.filter(i=>i.payment_status==='Paid').reduce((s,i)=>s+Number(i.cost||0),0);
   const unpaidCost=items.filter(i=>i.payment_status!=='Paid').reduce((s,i)=>s+Number(i.cost||0),0);
+
+  function uniCard(i){
+    return`<div class="data-card" data-id="${i.id}" data-payment="${i.payment_status}" data-delivery="${i.delivery_status}" data-name="${i.member_name?i.member_name.toLowerCase():''}">
+      <div class="data-card-header">
+        <div>
+          <div class="data-card-title">${i.member_name||'Unknown'}</div>
+          <div style="font-family:var(--font-cond);font-size:12px;color:var(--muted);margin-top:2px">${i.uniform_item} · Size: ${i.size||'—'} ${i.jersey_number?'· #'+i.jersey_number:''}</div>
+          ${i.cost?`<div style="font-family:var(--font-cond);font-size:13px;font-weight:600;color:var(--amber);margin-top:2px">${fmt(i.cost)}</div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+          <span class="badge ${i.payment_status==='Paid'?'green':'red'}">${i.payment_status}</span>
+          <span class="badge ${i.delivery_status==='Received'?'blue':'amber'}">${i.delivery_status}</span>
+        </div>
+      </div>
+      ${i.comments?`<div style="font-size:12px;color:var(--muted);margin-top:6px;padding-top:8px;border-top:1px solid var(--border);line-height:1.5">${i.comments}</div>`:''}
+      <div class="data-card-actions"><button class="btn" onclick='openEditUniform(${JSON.stringify(i).replace(/'/g,"&apos;")})' style="font-size:12px;padding:6px 14px">Edit</button></div>
+    </div>`;
+  }
+
+  function uniRow(i){
+    return`<tr data-id="${i.id}" data-payment="${i.payment_status}" data-delivery="${i.delivery_status}" data-name="${i.member_name?i.member_name.toLowerCase():''}">
+      <td style="font-weight:500">${i.member_name||'—'}</td>
+      <td>${i.uniform_item}</td><td>${i.size||'—'}</td>
+      <td style="font-family:var(--font-cond);font-size:14px">${i.jersey_number?'#'+i.jersey_number:'—'}</td>
+      <td style="font-family:var(--font-cond);font-size:13px;font-weight:600;color:var(--amber)">${i.cost?fmt(i.cost):'—'}</td>
+      <td><span class="badge ${i.payment_status==='Paid'?'green':'red'}">${i.payment_status}</span></td>
+      <td><span class="badge ${i.delivery_status==='Received'?'blue':'amber'}">${i.delivery_status}</span></td>
+      <td style="color:var(--muted);font-size:12px;max-width:200px">${i.comments||'—'}</td>
+      <td><button class="btn" onclick='openEditUniform(${JSON.stringify(i).replace(/'/g,"&apos;")})' style="padding:4px 10px;font-size:11px">Edit</button></td>
+    </tr>`;
+  }
+
+  // Group items by folder
+  function buildFolderBlock(fid, fname, folderItems, isOpen=true){
+    const folderCost=folderItems.reduce((s,i)=>s+Number(i.cost||0),0);
+    const folderPaid=folderItems.filter(i=>i.payment_status==='Paid').length;
+    const isUnassigned=(fid==='__unassigned__');
+    const headerBtns=isUnassigned?'':`
+      <button onclick="event.stopPropagation();openRenameFolder('${fid}','${fname.replace(/'/g,"\\'")}')" title="Rename" style="background:none;border:none;color:var(--dim);cursor:pointer;padding:4px 6px;border-radius:4px;line-height:0;transition:color .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--dim)'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
+      <button onclick="event.stopPropagation();deleteFolder('${fid}')" title="Delete folder" style="background:none;border:none;color:var(--dim);cursor:pointer;padding:4px 6px;border-radius:4px;line-height:0;transition:color .15s" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--dim)'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+      </button>`;
+    return`
+      <div class="folder" id="folder_${fid}">
+        <div class="folder-header" onclick="toggleUniFolder('${fid}')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="15" height="15" style="color:var(--dim);flex-shrink:0"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+          <div class="folder-title">${fname}</div>
+          <div class="folder-meta">
+            ${folderCost?`<span class="folder-total" style="color:var(--amber)">${fmt(folderCost)}</span>`:''}
+            <span class="folder-count">${folderItems.length} record${folderItems.length!==1?'s':''} · ${folderPaid} paid</span>
+            ${headerBtns}
+            <span class="folder-chevron ${isOpen?'open':''}">▾</span>
+          </div>
+        </div>
+        <div class="folder-body ${isOpen?'open':''}" id="fbody_${fid}">
+          <div class="card-list" style="display:flex;padding:10px 10px 4px">
+            ${folderItems.length?folderItems.map(uniCard).join(''):'<div class="empty-state" style="padding:20px"><p>No records in this folder</p></div>'}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // Build folder sections
+  let folderHTML='';
+  let unassigned=[];
+  if(folders.length===0){
+    // No folders yet — flat list
+    folderHTML=`<div class="card-list" id="uniCards" style="display:flex">
+      ${items.length?items.map(uniCard).join(''):'<div class="empty-state"><p>No uniform records yet</p></div>'}
+    </div>`;
+  } else {
+    folders.forEach(f=>{
+      const folderItems=items.filter(i=>i.folder_id===f.id);
+      folderHTML+=buildFolderBlock(f.id,f.name,folderItems,true);
+    });
+    unassigned=items.filter(i=>!i.folder_id);
+    folderHTML+=buildFolderBlock('__unassigned__','Unassigned',unassigned,true);
+  }
+
   document.getElementById('content').innerHTML=`
     <div class="stats-grid cols3" style="margin-bottom:10px">
       <div class="stat-card"><div class="stat-label">Total Records</div><div class="stat-value">${items.length}</div><div class="stat-sub">${received} received</div></div>
@@ -1394,46 +1526,23 @@ async function renderUniforms(){
         <div class="stat-sub">From ${unpaid} unpaid record(s)</div>
       </div>
     </div>
-    <div class="section-header"><div class="section-title">${items.length} Uniform Records</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <input class="form-input" placeholder="Search name..." style="width:130px;padding:8px 10px;font-size:13px" oninput="filterUniSearch(this.value)"/>
-        <select class="form-input" style="width:110px;padding:8px 10px;font-size:12px" onchange="filterUni('payment',this.value)"><option value="">Payment</option><option>Paid</option><option>Unpaid</option></select>
-        <select class="form-input" style="width:110px;padding:8px 10px;font-size:12px" onchange="filterUni('delivery',this.value)"><option value="">Delivery</option><option>Received</option><option>Pending</option></select>
-      </div>
+    <div class="section-header" style="margin-bottom:12px">
+      <div class="section-title">${items.length} Uniform Records${folders.length?' · '+folders.length+' folder'+(folders.length!==1?'s':''):''}</div>
     </div>
-    <div class="card-list" id="uniCards">
-      ${items.length?items.map(i=>`
-        <div class="data-card" data-payment="${i.payment_status}" data-delivery="${i.delivery_status}" data-name="${i.member_name?i.member_name.toLowerCase():''}">
-          <div class="data-card-header">
-            <div>
-              <div class="data-card-title">${i.member_name||'Unknown'}</div>
-              <div style="font-family:var(--font-cond);font-size:12px;color:var(--muted);margin-top:2px">${i.uniform_item} · Size: ${i.size||'—'} ${i.jersey_number?'· #'+i.jersey_number:''}</div>
-            ${i.cost?`<div style="font-family:var(--font-cond);font-size:13px;font-weight:600;color:var(--amber);margin-top:2px">${fmt(i.cost)}</div>`:''}
-            </div>
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
-              <span class="badge ${i.payment_status==='Paid'?'green':'red'}">${i.payment_status}</span>
-              <span class="badge ${i.delivery_status==='Received'?'blue':'amber'}">${i.delivery_status}</span>
-            </div>
-          </div>
-          ${i.comments?`<div style="font-size:12px;color:var(--muted);margin-top:6px;padding-top:8px;border-top:1px solid var(--border);line-height:1.5">${i.comments}</div>`:''}
-          <div class="data-card-actions"><button class="btn" onclick='openEditUniform(${JSON.stringify(i).replace(/'/g,"&apos;")})' style="font-size:12px;padding:6px 14px">Edit</button></div>
-        </div>`).join(''):'<div class="empty-state"><p>No uniform records yet</p></div>'}
-    </div>
-    <div class="table-wrap desktop-only">
+    ${folderHTML}
+    <div class="table-wrap desktop-only" style="margin-top:8px">
       <table><thead><tr><th>Name</th><th>Uniform Item</th><th>Size</th><th>Jersey #</th><th>Cost</th><th>Payment</th><th>Delivery</th><th>Comments</th><th></th></tr></thead>
       <tbody id="uniTbody">
-        ${items.length?items.map(i=>`<tr data-payment="${i.payment_status}" data-delivery="${i.delivery_status}" data-name="${i.member_name?i.member_name.toLowerCase():''}">
-          <td style="font-weight:500">${i.member_name||'—'}</td>
-          <td>${i.uniform_item}</td>
-          <td>${i.size||'—'}</td>
-          <td style="font-family:var(--font-cond);font-size:14px">${i.jersey_number?'#'+i.jersey_number:'—'}</td>
-          <td style="font-family:var(--font-cond);font-size:13px;font-weight:600;color:var(--amber)">${i.cost?fmt(i.cost):'—'}</td>
-          <td><span class="badge ${i.payment_status==='Paid'?'green':'red'}">${i.payment_status}</span></td>
-          <td><span class="badge ${i.delivery_status==='Received'?'blue':'amber'}">${i.delivery_status}</span></td>
-          <td style="color:var(--muted);font-size:12px;max-width:200px">${i.comments||'—'}</td>
-          <td><button class="btn" onclick='openEditUniform(${JSON.stringify(i).replace(/'/g,"&apos;")})' style="padding:4px 10px;font-size:11px">Edit</button></td>
-        </tr>`).join(''):'<tr><td colspan="9"><div class="empty-state"><p>No records yet</p></div></td></tr>'}
+        ${items.length?items.map(uniRow).join(''):'<tr><td colspan="9"><div class="empty-state"><p>No records yet</p></div></td></tr>'}
       </tbody></table></div>`;
+}
+
+function toggleUniFolder(fid){
+  const body=document.getElementById('fbody_'+fid);
+  const chevron=document.querySelector('#folder_'+fid+' .folder-chevron');
+  if(!body)return;
+  body.classList.toggle('open');
+  if(chevron)chevron.classList.toggle('open');
 }
 
 function filterUniSearch(q){
@@ -1459,7 +1568,15 @@ function filterUni(type,val){
   });
 }
 
-function uniformForm(i={}){return`
+async function uniformForm(i={}){
+  const{data:folders}=await sb.from('wlf_uniform_folders').select('*').order('created_at',{ascending:true});
+  const folderField=(folders&&folders.length)?`
+    <div class="form-group"><label class="form-label">Folder</label>
+      <select class="form-input" id="uFolder">
+        <option value="">— Unassigned —</option>
+        ${folders.map(f=>`<option value="${f.id}" ${i.folder_id===f.id?'selected':''}>${f.name}</option>`).join('')}
+      </select></div>`:'';
+  return`
   <div class="form-group"><label class="form-label">Player Name *</label>
     <input class="form-input" id="uName" value="${i.member_name||''}" placeholder="e.g. Ahmed Al Rashid"/></div>
   <div class="form-group"><label class="form-label">Uniform Item *</label>
@@ -1484,30 +1601,50 @@ function uniformForm(i={}){return`
         <option value="Received" ${i.delivery_status==='Received'?'selected':''}>Received</option>
       </select></div>
   </div>
+  ${folderField}
   <div class="form-group"><label class="form-label">Unit Cost (AED)</label>
     <input class="form-input" id="uCost" type="number" inputmode="decimal" step="0.01" min="0" value="${i.cost||0}" placeholder="0.00"/></div>
   <div class="form-group"><label class="form-label">Comments</label>
-    <textarea class="form-input" id="uComments" placeholder="Optional notes...">${i.comments||''}</textarea></div>`}
+    <textarea class="form-input" id="uComments" placeholder="Optional notes...">${i.comments||''}</textarea></div>`
+}
 
-function openAddUniform(){showModal('ADD UNIFORM',uniformForm(),async()=>{
-  const name=v('uName');if(!name)return toast('Player name is required','error');
-  const item=v('uItem');if(!item)return toast('Please select a uniform item','error');
-  const{error}=await sb.from('wlf_uniforms').insert({
-    member_name:v('uName'),uniform_item:item,size:v('uSize'),jersey_number:v('uJersey'),
-    payment_status:v('uPayment'),delivery_status:v('uDelivery'),cost:fv('uCost'),comments:v('uComments')
-  });
-  if(error)return toast(error.message,'error');logAudit('SAVE','Uniforms','Record saved');closeModal();toast('Saved','success');renderUniforms();
-},'Save Record')}
+async function openAddUniform(){
+  const formHtml=await uniformForm();
+  showModal('ADD UNIFORM',formHtml,async()=>{
+    const name=v('uName');if(!name)return toast('Player name is required','error');
+    const item=v('uItem');if(!item)return toast('Please select a uniform item','error');
+    const folderEl=document.getElementById('uFolder');
+    const folder_id=folderEl&&folderEl.value?folderEl.value:null;
+    const{error}=await sb.from('wlf_uniforms').insert({
+      member_name:name,uniform_item:item,size:v('uSize'),jersey_number:v('uJersey'),
+      payment_status:v('uPayment'),delivery_status:v('uDelivery'),cost:fv('uCost'),comments:v('uComments'),
+      folder_id
+    });
+    if(error)return toast(error.message,'error');
+    logAudit('SAVE','Uniforms','Record saved');closeModal();toast('Saved','success');renderUniforms();
+  },'Save Record');
+}
 
-function openEditUniform(i){showModal('EDIT UNIFORM',uniformForm(i)+`<div class="divider"></div><button class="btn danger" onclick="deleteUniform('${i.id}')" style="width:100%;justify-content:center">Delete Record</button>`,async()=>{
-  const{error}=await sb.from('wlf_uniforms').update({
-    member_name:v('uName'),uniform_item:v('uItem'),size:v('uSize'),jersey_number:v('uJersey'),
-    payment_status:v('uPayment'),delivery_status:v('uDelivery'),cost:fv('uCost'),comments:v('uComments')
-  }).eq('id',i.id);
-  if(error)return toast(error.message,'error');logAudit('SAVE','Uniforms','Record saved');closeModal();toast('Saved','success');renderUniforms();
-},'Save Changes')}
+async function openEditUniform(i){
+  const formHtml=await uniformForm(i);
+  showModal('EDIT UNIFORM',formHtml+`<div class="divider"></div><button class="btn danger" onclick="deleteUniform('${i.id}')" style="width:100%;justify-content:center">Delete Record</button>`,async()=>{
+    const folderEl=document.getElementById('uFolder');
+    const folder_id=folderEl&&folderEl.value?folderEl.value:null;
+    const{error}=await sb.from('wlf_uniforms').update({
+      member_name:v('uName'),uniform_item:v('uItem'),size:v('uSize'),jersey_number:v('uJersey'),
+      payment_status:v('uPayment'),delivery_status:v('uDelivery'),cost:fv('uCost'),comments:v('uComments'),
+      folder_id
+    }).eq('id',i.id);
+    if(error)return toast(error.message,'error');
+    logAudit('SAVE','Uniforms','Record saved');closeModal();toast('Saved','success');renderUniforms();
+  },'Save Changes');
+}
 
-async function deleteUniform(id){if(!confirm('Delete this record?'))return;await sb.from('wlf_uniforms').delete().eq('id',id);closeModal();renderUniforms()}
+async function deleteUniform(id){
+  if(!confirm('Delete this record?'))return;
+  await sb.from('wlf_uniforms').delete().eq('id',id);
+  closeModal();renderUniforms();
+}
 
 // -- AUDIT LOG PAGE --
 function renderAuditLog(){
