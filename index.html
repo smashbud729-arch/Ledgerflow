@@ -617,9 +617,9 @@ async function renderDashboard(){
 
   document.getElementById('content').innerHTML=`
     <div class="stats-grid">
-      <div class="stat-card ${balance>=0?'green':'red'}"><div class="stat-label">Balance</div><div class="stat-value" style="font-size:16px">${fmt(balance)}</div></div>
+      <div class="stat-card ${balance>=0?'green':'red'}"><div class="stat-label">Net</div><div class="stat-value" style="font-size:16px">${fmt(balance)}</div></div>
       <div class="stat-card"><div class="stat-label">Members</div><div class="stat-value">${activeMembers}<span style="font-size:13px;color:var(--dim)"> active</span></div></div>
-      <div class="stat-card green"><div class="stat-label">Income</div><div class="stat-value" style="font-size:16px">${fmt(income)}</div></div>
+      <div class="stat-card green"><div class="stat-label">Cash In</div><div class="stat-value" style="font-size:16px">${fmt(income)}</div></div>
       <div class="stat-card red"><div class="stat-label">Cash Out</div><div class="stat-value" style="font-size:16px">${fmt(expense)}</div></div>
     </div>
     ${lowStock.length?`<div class="alert-banner">⚠️ ${lowStock.length} item(s) low on stock — <span onclick="navigate('inventory')" style="cursor:pointer;text-decoration:underline;margin-left:4px">View inventory</span></div>`:''}
@@ -1300,13 +1300,13 @@ async function loadReport(){
       <div style="color:var(--dim);font-size:11px;font-family:var(--font-cond);letter-spacing:1px">WHACK UAE · LEDGERFLOW</div>
     </div>
     <div class="report-grid">
-      <div class="stat-card green"><div class="stat-label">Income</div><div class="stat-value" style="font-size:15px">${fmt(income)}</div></div>
+      <div class="stat-card green"><div class="stat-label">Cash In</div><div class="stat-value" style="font-size:15px">${fmt(income)}</div></div>
       <div class="stat-card red"><div class="stat-label">Cash Out</div><div class="stat-value" style="font-size:15px">${fmt(expense)}</div></div>
       <div class="stat-card ${net>=0?'green':'red'}"><div class="stat-label">Net</div><div class="stat-value" style="font-size:15px">${fmt(net)}</div></div>
     </div>
     <div class="two-col">
       <div>
-        <div class="section-header"><div class="section-title">Income</div></div>
+        <div class="section-header"><div class="section-title">Cash In</div></div>
         <div class="table-wrap"><table style="min-width:0"><thead><tr><th>Category</th><th>Amount</th></tr></thead><tbody>
           ${Object.keys(catIncome).length?Object.entries(catIncome).sort((a,b)=>b[1]-a[1]).map(([c,a])=>`<tr><td style="font-size:12px">${c}</td><td style="color:var(--green);font-family:var(--font-cond);font-size:13px;font-weight:600">${fmt(a)}</td></tr>`).join(''):'<tr><td colspan="2"><div class="empty-state" style="padding:12px"><p>None</p></div></td></tr>'}
         </tbody></table></div>
