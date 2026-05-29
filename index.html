@@ -1505,7 +1505,7 @@ async function renderUniforms(){
       folderHTML+=buildFolderBlock(f.id,f.name,folderItems,true);
     });
     unassigned=items.filter(i=>!i.folder_id);
-    folderHTML+=buildFolderBlock('__unassigned__','Unassigned',unassigned,true);
+    if(unassigned.length)folderHTML+=buildFolderBlock('__unassigned__','Unassigned',unassigned,true);
   }
 
   document.getElementById('content').innerHTML=`
