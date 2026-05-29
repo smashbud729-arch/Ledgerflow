@@ -540,7 +540,7 @@ function setStatus(ok,msg){document.getElementById('statusDot').className='statu
 async function initSupabase(url,key){
   try{
     sb=createClient(url.trim(),key.trim());
-    for(const t of['wlf_inventory','wlf_transactions','wlf_members','wlf_sessions','wlf_receipts','wlf_uniforms'])await sb.from(t).select('id').limit(1);
+    for(const t of['wlf_inventory','wlf_transactions','wlf_members','wlf_sessions','wlf_receipts','wlf_uniforms','wlf_uniform_folders'])await sb.from(t).select('id').limit(1);
     setStatus(true,'Connected');
     localStorage.setItem('wlf_url',url.trim());localStorage.setItem('wlf_key',key.trim());
     navigate('dashboard');
@@ -580,7 +580,10 @@ ALTER TABLE wlf_transactions ADD COLUMN IF NOT EXISTS payment_mode text DEFAULT 
 ALTER TABLE wlf_transactions ADD COLUMN IF NOT EXISTS is_reimbursable boolean DEFAULT false;
 ALTER TABLE wlf_transactions ADD COLUMN IF NOT EXISTS is_reimbursed boolean DEFAULT false;
 CREATE TABLE IF NOT EXISTS wlf_uniforms (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, member_name text, uniform_item text NOT NULL, size text, jersey_number text, cost numeric DEFAULT 0, payment_status text DEFAULT 'Unpaid', delivery_status text DEFAULT 'Pending', comments text, created_at timestamptz DEFAULT now());
-ALTER TABLE wlf_uniforms DISABLE ROW LEVEL SECURITY;</code></div>
+ALTER TABLE wlf_uniforms DISABLE ROW LEVEL SECURITY;
+CREATE TABLE IF NOT EXISTS wlf_uniform_folders (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, name text NOT NULL, created_at timestamptz DEFAULT now());
+ALTER TABLE wlf_uniform_folders DISABLE ROW LEVEL SECURITY;
+ALTER TABLE wlf_uniforms ADD COLUMN IF NOT EXISTS folder_id uuid REFERENCES wlf_uniform_folders(id) ON DELETE SET NULL;</code></div>
         <button class="btn primary" onclick="handleConnect()" style="width:100%;justify-content:center;padding:13px;font-size:15px">Connect to Supabase</button>
         <div id="setupError"></div>
       </div>
