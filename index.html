@@ -1530,11 +1530,11 @@ async function renderUniforms(){
       <div class="section-title">${items.length} Uniform Records${folders.length?' · '+folders.length+' folder'+(folders.length!==1?'s':''):''}</div>
     </div>
     ${folderHTML}
-    <div class="table-wrap desktop-only" style="margin-top:8px">
+    ${folders.length===0?`<div class="table-wrap desktop-only" style="margin-top:8px">
       <table><thead><tr><th>Name</th><th>Uniform Item</th><th>Size</th><th>Jersey #</th><th>Cost</th><th>Payment</th><th>Delivery</th><th>Comments</th><th></th></tr></thead>
       <tbody id="uniTbody">
         ${items.length?items.map(uniRow).join(''):'<tr><td colspan="9"><div class="empty-state"><p>No records yet</p></div></td></tr>'}
-      </tbody></table></div>`;
+      </tbody></table></div>`:''}``;
 }
 
 function toggleUniFolder(fid){
