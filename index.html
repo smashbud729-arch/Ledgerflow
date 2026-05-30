@@ -500,7 +500,12 @@ function handleLogin(){
     sessionStorage.setItem('wlf_auth','1');
     document.getElementById('loginScreen').style.display='none';
     bootApp();
-  }else{err.style.display='block';document.getElementById('loginPass').value='';document.getElementById('loginPass').focus()}
+  }else{
+    err.textContent='Incorrect username or password.';
+    err.style.display='block';
+    document.getElementById('loginPass').value='';
+    document.getElementById('loginPass').focus();
+  }
 }
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('loginScreen').style.display!=='none')handleLogin()});
 function checkAuth(){if(sessionStorage.getItem('wlf_auth')==='1'){document.getElementById('loginScreen').style.display='none';return true}return false}
@@ -540,10 +545,7 @@ function setStatus(ok,msg){document.getElementById('statusDot').className='statu
 async function initSupabase(url,key){
   try{
     sb=createClient(url.trim(),key.trim());
-    const{error}=await sb.from('wlf_transactions').select('id').limit(1);
-    if(error)throw new Error(error.message);
     setStatus(true,'Connected');
-    localStorage.setItem('wlf_url',url.trim());localStorage.setItem('wlf_key',key.trim());
     navigate('dashboard');
   }catch(e){sb=null;setStatus(false,'Error');return e.message||'Connection failed'}
 }
