@@ -11,6 +11,7 @@
 <title>Whack Ledgerflow</title>
 <link rel="manifest" href="./manifest.json"/>
 <link rel="apple-touch-icon" href="./icon.jpg"/>
+<link rel="icon" href="./icon.jpg" type="image/jpeg"/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet"/>
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -275,6 +276,7 @@ tr.accent-amber td:first-child{border-left:3px solid var(--amber)}
   .topbar-menu-btn{display:none!important}
   .fab{display:none!important}
   .card-list{display:none!important}
+  .folder-card-list{display:flex!important}
   .table-wrap.desktop-only{display:block!important}
 }
 @media(min-width:769px) and (max-width:1024px){
@@ -1490,7 +1492,7 @@ async function renderUniforms(){
           </div>
         </div>
         <div class="folder-body" id="fbody_${fid}" style="display:${isOpen?'block':'none'}">
-          <div class="card-list" style="display:flex;padding:10px 10px 4px">
+          <div class="card-list folder-card-list" style="display:flex;padding:10px 10px 4px">
             ${folderItems.length?folderItems.map(uniCard).join(''):'<div class="empty-state" style="padding:20px"><p>No records in this folder</p></div>'}
           </div>
         </div>
@@ -1547,7 +1549,7 @@ function toggleUniFolder(fid){
   const body=document.getElementById('fbody_'+fid);
   const chevron=document.querySelector('#folder_'+fid+' .folder-chevron');
   if(!body)return;
-  const cardList=body.querySelector('.card-list');
+  const cardList=body.querySelector('.folder-card-list');
   const isOpen=body.style.display!=='none';
   body.style.display=isOpen?'none':'block';
   if(cardList)cardList.style.display=isOpen?'none':'flex';
