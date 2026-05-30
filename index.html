@@ -623,13 +623,13 @@ async function renderDashboard(){
 
   document.getElementById('content').innerHTML=`
     <div class="stats-grid">
-      <div class="stat-card ${balance>=0?'green':'red'}"><div class="stat-label">Balance</div><div class="stat-value" style="font-size:16px">${fmt(balance)}</div></div>
+      <div class="stat-card ${balance>=0?'green':'red'}"><div class="stat-label">Net</div><div class="stat-value" style="font-size:16px">${fmt(balance)}</div></div>
       <div class="stat-card"><div class="stat-label">Members</div><div class="stat-value">${activeMembers}<span style="font-size:13px;color:var(--dim)"> active</span></div></div>
-      <div class="stat-card green"><div class="stat-label">Income</div><div class="stat-value" style="font-size:16px">${fmt(income)}</div></div>
+      <div class="stat-card green"><div class="stat-label">Cash In</div><div class="stat-value" style="font-size:16px">${fmt(income)}</div></div>
       <div class="stat-card red"><div class="stat-label">Cash Out</div><div class="stat-value" style="font-size:16px">${fmt(expense)}</div></div>
     </div>
     ${lowStock.length?`<div class="alert-banner">⚠️ ${lowStock.length} item(s) low on stock — <span onclick="navigate('inventory')" style="cursor:pointer;text-decoration:underline;margin-left:4px">View inventory</span></div>`:''}
-    <div class="chart-card"><div class="chart-title">Income vs Expenses</div><canvas id="monthChart" height="160"></canvas></div>
+    <div class="chart-card"><div class="chart-title">Cash In vs Cash Out</div><canvas id="monthChart" height="160"></canvas></div>
     <div class="section-header"><div class="section-title">Recent Transactions</div></div>
     <div class="card-list" style="display:flex">
       ${recentTx.length?recentTx.map(t=>`
@@ -663,8 +663,8 @@ async function renderDashboard(){
   if(months.length){
     const ctx=document.getElementById('monthChart').getContext('2d');
     new Chart(ctx,{type:'bar',data:{labels:mLabels,datasets:[
-      {label:'Income',data:months.map(m=>monthlyMap[m].income),backgroundColor:'rgba(76,175,125,0.75)',borderRadius:4},
-      {label:'Expenses',data:months.map(m=>monthlyMap[m].expense),backgroundColor:'rgba(224,64,64,0.75)',borderRadius:4}
+      {label:'Cash In',data:months.map(m=>monthlyMap[m].income),backgroundColor:'rgba(76,175,125,0.75)',borderRadius:4},
+      {label:'Cash Out',data:months.map(m=>monthlyMap[m].expense),backgroundColor:'rgba(224,64,64,0.75)',borderRadius:4}
     ]},options:{responsive:true,plugins:{legend:{labels:{color:'#777',font:{size:11}}}},scales:{x:{ticks:{color:'#555',font:{size:11}},grid:{color:'#1a1a1a'}},y:{ticks:{color:'#555',font:{size:10},callback:val=>'AED '+val.toLocaleString()},grid:{color:'#1a1a1a'}}}}});
   }
 }
@@ -868,7 +868,7 @@ async function renderAccounting(){
     <div class="stats-grid cols3" style="margin-bottom:10px">
       <div class="stat-card green"><div class="stat-label">Cash In</div><div class="stat-value" style="font-size:15px">${fmt(income)}</div><div class="stat-sub">${incTxs.length} entries</div></div>
       <div class="stat-card red"><div class="stat-label">Cash Out</div><div class="stat-value" style="font-size:15px">${fmt(expense)}</div><div class="stat-sub">${expTxs.length} entries</div></div>
-      <div class="stat-card ${netBal>=0?'green':'red'}"><div class="stat-label">Balance</div><div class="stat-value" style="font-size:15px">${fmt(netBal)}</div></div>
+      <div class="stat-card ${netBal>=0?'green':'red'}"><div class="stat-label">Net</div><div class="stat-value" style="font-size:15px">${fmt(netBal)}</div></div>
     </div>
     <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:10px">
       <div class="stat-card" style="border-left:3px solid #4caf7d">
@@ -1306,19 +1306,19 @@ async function loadReport(){
       <div style="color:var(--dim);font-size:11px;font-family:var(--font-cond);letter-spacing:1px">WHACK UAE · LEDGERFLOW</div>
     </div>
     <div class="report-grid">
-      <div class="stat-card green"><div class="stat-label">Income</div><div class="stat-value" style="font-size:15px">${fmt(income)}</div></div>
+      <div class="stat-card green"><div class="stat-label">Cash In</div><div class="stat-value" style="font-size:15px">${fmt(income)}</div></div>
       <div class="stat-card red"><div class="stat-label">Cash Out</div><div class="stat-value" style="font-size:15px">${fmt(expense)}</div></div>
       <div class="stat-card ${net>=0?'green':'red'}"><div class="stat-label">Net</div><div class="stat-value" style="font-size:15px">${fmt(net)}</div></div>
     </div>
     <div class="two-col">
       <div>
-        <div class="section-header"><div class="section-title">Income</div></div>
+        <div class="section-header"><div class="section-title">Cash In</div></div>
         <div class="table-wrap"><table style="min-width:0"><thead><tr><th>Category</th><th>Amount</th></tr></thead><tbody>
           ${Object.keys(catIncome).length?Object.entries(catIncome).sort((a,b)=>b[1]-a[1]).map(([c,a])=>`<tr><td style="font-size:12px">${c}</td><td style="color:var(--green);font-family:var(--font-cond);font-size:13px;font-weight:600">${fmt(a)}</td></tr>`).join(''):'<tr><td colspan="2"><div class="empty-state" style="padding:12px"><p>None</p></div></td></tr>'}
         </tbody></table></div>
       </div>
       <div>
-        <div class="section-header"><div class="section-title">Expenses</div></div>
+        <div class="section-header"><div class="section-title">Cash Out</div></div>
         <div class="table-wrap"><table style="min-width:0"><thead><tr><th>Category</th><th>Amount</th></tr></thead><tbody>
           ${Object.keys(catExpense).length?Object.entries(catExpense).sort((a,b)=>b[1]-a[1]).map(([c,a])=>`<tr><td style="font-size:12px">${c}</td><td style="color:var(--red);font-family:var(--font-cond);font-size:13px;font-weight:600">${fmt(a)}</td></tr>`).join(''):'<tr><td colspan="2"><div class="empty-state" style="padding:12px"><p>None</p></div></td></tr>'}
         </tbody></table></div>
@@ -1341,8 +1341,8 @@ async function loadReport(){
   if(days.length){
     const ctx=document.getElementById('dailyChart').getContext('2d');
     new Chart(ctx,{type:'line',data:{labels:days.map(d=>d.split('-')[2]),datasets:[
-      {label:'Income',data:days.map(d=>dayMap[d].income),borderColor:'#4caf7d',backgroundColor:'rgba(76,175,125,0.1)',tension:0.3,fill:true,pointRadius:2},
-      {label:'Expenses',data:days.map(d=>dayMap[d].expense),borderColor:'#e04040',backgroundColor:'rgba(224,64,64,0.1)',tension:0.3,fill:true,pointRadius:2}
+      {label:'Cash In',data:days.map(d=>dayMap[d].income),borderColor:'#4caf7d',backgroundColor:'rgba(76,175,125,0.1)',tension:0.3,fill:true,pointRadius:2},
+      {label:'Cash Out',data:days.map(d=>dayMap[d].expense),borderColor:'#e04040',backgroundColor:'rgba(224,64,64,0.1)',tension:0.3,fill:true,pointRadius:2}
     ]},options:{responsive:true,plugins:{legend:{labels:{color:'#777',font:{size:10}}}},scales:{x:{ticks:{color:'#555',font:{size:10}},grid:{color:'#1a1a1a'}},y:{ticks:{color:'#555',font:{size:10},callback:val=>'AED '+val.toLocaleString()},grid:{color:'#1a1a1a'}}}}});
   }
 }
