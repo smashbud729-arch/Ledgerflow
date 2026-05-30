@@ -1490,7 +1490,7 @@ async function renderUniforms(){
           </div>
         </div>
         <div class="folder-body" id="fbody_${fid}" style="display:${isOpen?'block':'none'}">
-          <div class="card-list" style="padding:10px 10px 4px">
+          <div class="card-list" style="display:flex;padding:10px 10px 4px">
             ${folderItems.length?folderItems.map(uniCard).join(''):'<div class="empty-state" style="padding:20px"><p>No records in this folder</p></div>'}
           </div>
         </div>
@@ -1547,8 +1547,10 @@ function toggleUniFolder(fid){
   const body=document.getElementById('fbody_'+fid);
   const chevron=document.querySelector('#folder_'+fid+' .folder-chevron');
   if(!body)return;
+  const cardList=body.querySelector('.card-list');
   const isOpen=body.style.display!=='none';
   body.style.display=isOpen?'none':'block';
+  if(cardList)cardList.style.display=isOpen?'none':'flex';
   if(chevron)chevron.classList.toggle('open',!isOpen);
 }
 
