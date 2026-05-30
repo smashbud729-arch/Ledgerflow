@@ -1495,6 +1495,11 @@ async function renderUniforms(){
           <div class="card-list folder-card-list" style="display:flex;padding:10px 10px 4px">
             ${folderItems.length?folderItems.map(uniCard).join(''):'<div class="empty-state" style="padding:20px"><p>No records in this folder</p></div>'}
           </div>
+          <div class="table-wrap desktop-only" style="margin:0">
+            <table><thead><tr><th>Name</th><th>Item</th><th>Size</th><th>#</th><th>Cost</th><th>Payment</th><th>Delivery</th><th>Comments</th><th></th></tr></thead>
+            <tbody>${folderItems.length?folderItems.map(uniRow).join(''):'<tr><td colspan="9"><div class="empty-state" style="padding:12px"><p>No records</p></div></td></tr>'}</tbody>
+            </table>
+          </div>
         </div>
       </div>`;
   }
@@ -1549,9 +1554,9 @@ function toggleUniFolder(fid){
   const body=document.getElementById('fbody_'+fid);
   const chevron=document.querySelector('#folder_'+fid+' .folder-chevron');
   if(!body)return;
-  const cardList=body.querySelector('.folder-card-list');
   const isOpen=body.style.display!=='none';
   body.style.display=isOpen?'none':'block';
+  const cardList=body.querySelector('.folder-card-list');
   if(cardList)cardList.style.display=isOpen?'none':'flex';
   if(chevron)chevron.classList.toggle('open',!isOpen);
 }
