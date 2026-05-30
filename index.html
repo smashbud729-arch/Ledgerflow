@@ -1540,7 +1540,7 @@ async function renderUniforms(){
       <table><thead><tr><th>Name</th><th>Uniform Item</th><th>Size</th><th>Jersey #</th><th>Cost</th><th>Payment</th><th>Delivery</th><th>Comments</th><th></th></tr></thead>
       <tbody id="uniTbody">
         ${items.length?items.map(uniRow).join(''):'<tr><td colspan="9"><div class="empty-state"><p>No records yet</p></div></td></tr>'}
-      </tbody></table></div>`:''}``;
+      </tbody></table></div>`:''}`;
 }
 
 function toggleUniFolder(fid){
@@ -1576,42 +1576,39 @@ function filterUni(type,val){
 
 async function uniformForm(i={}){
   const{data:folders}=await sb.from('wlf_uniform_folders').select('*').order('created_at',{ascending:true});
-  const folderField=(folders&&folders.length)?`
-    <div class="form-group"><label class="form-label">Folder</label>
-      <select class="form-input" id="uFolder">
-        <option value="">— Unassigned —</option>
-        ${folders.map(f=>`<option value="${f.id}" ${i.folder_id===f.id?'selected':''}>${f.name}</option>`).join('')}
-      </select></div>`:'';
-  return`
-  <div class="form-group"><label class="form-label">Player Name *</label>
-    <input class="form-input" id="uName" value="${i.member_name||''}" placeholder="e.g. Ahmed Al Rashid"/></div>
-  <div class="form-group"><label class="form-label">Uniform Item *</label>
-    <select class="form-input" id="uItem">
-      ${['','Jersey','Shorts','Socks','Jacket','Track Pants','Training Top','Full Kit','Cap','Bag','Other'].map(x=>`<option value="${x}" ${i.uniform_item===x?'selected':''}>${x||'Select item...'}</option>`).join('')}
-    </select></div>
-  <div class="grid-2">
-    <div class="form-group"><label class="form-label">Size</label>
-      <select class="form-input" id="uSize">
-        ${['','XS','S','M','L','XL','XXL','XXXL','Custom'].map(x=>`<option value="${x}" ${i.size===x?'selected':''}>${x||'Select...'}</option>`).join('')}
-      </select></div>
-    <div class="form-group"><label class="form-label">Jersey Number</label>
-      <input class="form-input" id="uJersey" type="text" inputmode="numeric" value="${i.jersey_number||''}" placeholder="e.g. 10"/></div>
-    <div class="form-group"><label class="form-label">Payment Status</label>
-      <select class="form-input" id="uPayment">
-        <option value="Unpaid" ${i.payment_status==='Unpaid'||!i.payment_status?'selected':''}>Unpaid</option>
-        <option value="Paid" ${i.payment_status==='Paid'?'selected':''}>Paid</option>
-      </select></div>
-    <div class="form-group"><label class="form-label">Delivery Status</label>
-      <select class="form-input" id="uDelivery">
-        <option value="Pending" ${i.delivery_status==='Pending'||!i.delivery_status?'selected':''}>Pending</option>
-        <option value="Received" ${i.delivery_status==='Received'?'selected':''}>Received</option>
-      </select></div>
-  </div>
-  ${folderField}
-  <div class="form-group"><label class="form-label">Unit Cost (AED)</label>
-    <input class="form-input" id="uCost" type="number" inputmode="decimal" step="0.01" min="0" value="${i.cost||0}" placeholder="0.00"/></div>
-  <div class="form-group"><label class="form-label">Comments</label>
-    <textarea class="form-input" id="uComments" placeholder="Optional notes...">${i.comments||''}</textarea></div>`
+  const folderOptions=(folders&&folders.length)
+    ?folders.map(function(f){return '<option value="'+f.id+'" '+(i.folder_id===f.id?'selected':'')+'>'+f.name+'</option>';}).join('')
+    :'';
+  const folderField=(folders&&folders.length)
+    ?'<div class="form-group"><label class="form-label">Folder</label><select class="form-input" id="uFolder"><option value="">— Unassigned —</option>'+folderOptions+'</select></div>'
+    :'';
+  const itemOpts=['','Jersey','Shorts','Socks','Jacket','Track Pants','Training Top','Full Kit','Cap','Bag','Other']
+    .map(function(x){return '<option value="'+x+'" '+(i.uniform_item===x?'selected':'')+'>'+(x||'Select item...')+'</option>';}).join('');
+  const sizeOpts=['','XS','S','M','L','XL','XXL','XXXL','Custom']
+    .map(function(x){return '<option value="'+x+'" '+(i.size===x?'selected':'')+'>'+(x||'Select...')+'</option>';}).join('');
+  return''+
+    '<div class="form-group"><label class="form-label">Player Name *</label>'+
+    '<input class="form-input" id="uName" value="'+(i.member_name||'')+'" placeholder="e.g. Ahmed Al Rashid"/></div>'+
+    '<div class="form-group"><label class="form-label">Uniform Item *</label>'+
+    '<select class="form-input" id="uItem">'+itemOpts+'</select></div>'+
+    '<div class="grid-2">'+
+    '<div class="form-group"><label class="form-label">Size</label><select class="form-input" id="uSize">'+sizeOpts+'</select></div>'+
+    '<div class="form-group"><label class="form-label">Jersey Number</label>'+
+    '<input class="form-input" id="uJersey" type="text" inputmode="numeric" value="'+(i.jersey_number||'')+'" placeholder="e.g. 10"/></div>'+
+    '<div class="form-group"><label class="form-label">Payment Status</label>'+
+    '<select class="form-input" id="uPayment">'+
+    '<option value="Unpaid" '+(i.payment_status==='Unpaid'||!i.payment_status?'selected':'')+'>Unpaid</option>'+
+    '<option value="Paid" '+(i.payment_status==='Paid'?'selected':'')+'>Paid</option></select></div>'+
+    '<div class="form-group"><label class="form-label">Delivery Status</label>'+
+    '<select class="form-input" id="uDelivery">'+
+    '<option value="Pending" '+(i.delivery_status==='Pending'||!i.delivery_status?'selected':'')+'>Pending</option>'+
+    '<option value="Received" '+(i.delivery_status==='Received'?'selected':'')+'>Received</option></select></div>'+
+    '</div>'+
+    folderField+
+    '<div class="form-group"><label class="form-label">Unit Cost (AED)</label>'+
+    '<input class="form-input" id="uCost" type="number" inputmode="decimal" step="0.01" min="0" value="'+(i.cost||0)+'" placeholder="0.00"/></div>'+
+    '<div class="form-group"><label class="form-label">Comments</label>'+
+    '<textarea class="form-input" id="uComments" placeholder="Optional notes...">'+(i.comments||'')+'</textarea></div>';
 }
 
 async function openAddUniform(){
@@ -1633,7 +1630,8 @@ async function openAddUniform(){
 
 async function openEditUniform(i){
   const formHtml=await uniformForm(i);
-  showModal('EDIT UNIFORM',formHtml+`<div class="divider"></div><button class="btn danger" onclick="deleteUniform('${i.id}')" style="width:100%;justify-content:center">Delete Record</button>`,async()=>{
+  const deleteBtn='<div class="divider"></div><button class="btn danger" onclick="deleteUniform(\''+i.id+'\')" style="width:100%;justify-content:center">Delete Record</button>';
+  showModal('EDIT UNIFORM',formHtml+deleteBtn,async()=>{
     const folderEl=document.getElementById('uFolder');
     const folder_id=folderEl&&folderEl.value?folderEl.value:null;
     const{error}=await sb.from('wlf_uniforms').update({
