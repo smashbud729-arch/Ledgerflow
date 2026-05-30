@@ -540,11 +540,12 @@ function setStatus(ok,msg){document.getElementById('statusDot').className='statu
 async function initSupabase(url,key){
   try{
     sb=createClient(url.trim(),key.trim());
-    for(const t of['wlf_inventory','wlf_transactions','wlf_members','wlf_sessions','wlf_receipts','wlf_uniforms','wlf_uniform_folders'])await sb.from(t).select('id').limit(1);
+    const{error}=await sb.from('wlf_transactions').select('id').limit(1);
+    if(error)throw new Error(error.message);
     setStatus(true,'Connected');
     localStorage.setItem('wlf_url',url.trim());localStorage.setItem('wlf_key',key.trim());
     navigate('dashboard');
-  }catch(e){setStatus(false,'Error');return e.message||'Connection failed'}
+  }catch(e){sb=null;setStatus(false,'Error');return e.message||'Connection failed'}
 }
 
 // -- SETUP --
