@@ -614,7 +614,9 @@ async function renderDashboard(){
   ]);
   const income=(txs||[]).filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount),0);
   const expense=(txs||[]).filter(t=>t.type==='expense').reduce((s,t)=>s+Number(t.amount),0);
+  const investment=(txs||[]).filter(t=>t.type==='investment').reduce((s,t)=>s+Number(t.amount),0);
   const balance=income-expense;
+  const equity=investment+balance;
   const lowStock=(inv||[]).filter(i=>i.quantity<=i.min_stock);
   const activeMembers=(members||[]).filter(m=>m.status==='active').length;
   const recentTx=[...(txs||[])].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,6);
@@ -629,6 +631,8 @@ async function renderDashboard(){
       <div class="stat-card"><div class="stat-label">Members</div><div class="stat-value">${activeMembers}<span style="font-size:13px;color:var(--dim)"> active</span></div></div>
       <div class="stat-card green"><div class="stat-label">Cash In</div><div class="stat-value" style="font-size:16px">${fmt(income)}</div></div>
       <div class="stat-card red"><div class="stat-label">Cash Out</div><div class="stat-value" style="font-size:16px">${fmt(expense)}</div></div>
+      <div class="stat-card amber"><div class="stat-label">Investment</div><div class="stat-value" style="font-size:16px">${fmt(investment)}</div></div>
+      <div class="stat-card" style="border-left:3px solid var(--amber)"><div class="stat-label">Equity</div><div class="stat-value" style="font-size:16px;color:var(--amber)">${fmt(equity)}</div><div class="stat-sub" style="font-size:10px">Invest + Net</div></div>
     </div>
     ${lowStock.length?`<div class="alert-banner">⚠️ ${lowStock.length} item(s) low on stock — <span onclick="navigate('inventory')" style="cursor:pointer;text-decoration:underline;margin-left:4px">View inventory</span></div>`:''}
     <div class="chart-card"><div class="chart-title">Cash In vs Cash Out</div><canvas id="monthChart" height="160"></canvas></div>
@@ -764,7 +768,7 @@ async function renderAccounting(){
   const expense=expTxs.reduce((s,t)=>s+Number(t.amount),0);
   const netIncome=income-expense; // Net Income = Cash In - Cash Out (no investment)
   const netBal=netIncome; // alias for existing references
-  const cashOnHand=investment+netIncome; // Cash on Hand = Investment + Net Income
+  const equity=investment+netIncome; // Equity = Investment + Net Income
   const cashCollected=incTxs.filter(t=>t.payment_mode==='Cash'||!t.payment_mode).reduce((s,t)=>s+Number(t.amount),0);
   const bankCollected=incTxs.filter(t=>t.payment_mode==='Bank Transfer').reduce((s,t)=>s+Number(t.amount),0);
   // Reimbursement tracking
@@ -899,13 +903,13 @@ async function renderAccounting(){
       </div>
     </div>
 
-    <!-- Cash on Hand + Reimbursement Summary -->
+    <!-- Equity + Reimbursement Summary -->
     <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:10px">
       <div class="stat-card" style="border-left:3px solid var(--amber)">
         <div class="stat-label" style="display:flex;align-items:center;gap:6px">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13"><path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>Cash on Hand
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13"><path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>Equity
         </div>
-        <div class="stat-value" style="font-size:17px;color:${cashOnHand>=0?'var(--amber)':'var(--red)'}">${fmt(cashOnHand)}</div>
+        <div class="stat-value" style="font-size:17px;color:${equity>=0?'var(--amber)':'var(--red)'}">${fmt(equity)}</div>
         <div class="cash-breakdown">
           <div class="cash-row"><span class="cash-row-label">Investment</span><span class="cash-row-val" style="color:var(--amber)">+${fmt(investment)}</span></div>
           <div class="cash-row"><span class="cash-row-label">Net Income</span><span class="cash-row-val" style="color:${netIncome>=0?'var(--green)':'var(--red)'}">${netIncome>=0?'+':''}${fmt(netIncome)}</span></div>
@@ -1312,13 +1316,15 @@ async function loadReport(){
   ]);
   const income=(txs||[]).filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount),0);
   const expense=(txs||[]).filter(t=>t.type==='expense').reduce((s,t)=>s+Number(t.amount),0);
+  const investMonth=(txs||[]).filter(t=>t.type==='investment').reduce((s,t)=>s+Number(t.amount),0);
   const net=income-expense;
+  const equityMonth=investMonth+net;
   const lowStock=(inv||[]).filter(i=>i.quantity<=i.min_stock);
   const mLabel=new Date(year,mo-1).toLocaleString('en',{month:'long',year:'numeric'});
-  const catIncome={},catExpense={};
-  (txs||[]).forEach(t=>{const c=t.category||'Other';if(t.type==='income'){catIncome[c]=(catIncome[c]||0)+Number(t.amount)}else{catExpense[c]=(catExpense[c]||0)+Number(t.amount)}});
+  const catIncome={},catExpense={},catInvest={};
+  (txs||[]).forEach(t=>{const c=t.category||'Other';if(t.type==='income'){catIncome[c]=(catIncome[c]||0)+Number(t.amount)}else if(t.type==='expense'){catExpense[c]=(catExpense[c]||0)+Number(t.amount)}else if(t.type==='investment'){catInvest[c]=(catInvest[c]||0)+Number(t.amount)}});
   const dayMap={};
-  (txs||[]).forEach(t=>{const d=t.date||'';if(!d)return;if(!dayMap[d])dayMap[d]={income:0,expense:0};dayMap[d][t.type]+=Number(t.amount)});
+  (txs||[]).forEach(t=>{const d=t.date||'';if(!d)return;if(!dayMap[d])dayMap[d]={income:0,expense:0,investment:0};if(dayMap[d][t.type]!==undefined)dayMap[d][t.type]+=Number(t.amount)});
   const days=Object.keys(dayMap).sort();
 
   document.getElementById('reportContent').innerHTML=`
@@ -1330,6 +1336,8 @@ async function loadReport(){
       <div class="stat-card green"><div class="stat-label">Cash In</div><div class="stat-value" style="font-size:15px">${fmt(income)}</div></div>
       <div class="stat-card red"><div class="stat-label">Cash Out</div><div class="stat-value" style="font-size:15px">${fmt(expense)}</div></div>
       <div class="stat-card ${net>=0?'green':'red'}"><div class="stat-label">Net</div><div class="stat-value" style="font-size:15px">${fmt(net)}</div></div>
+      <div class="stat-card amber"><div class="stat-label">Investment</div><div class="stat-value" style="font-size:15px">${fmt(investMonth)}</div></div>
+      <div class="stat-card" style="border-left:3px solid var(--amber)"><div class="stat-label">Equity</div><div class="stat-value" style="font-size:15px;color:var(--amber)">${fmt(equityMonth)}</div><div class="stat-sub" style="font-size:10px">Invest + Net</div></div>
     </div>
     <div class="two-col">
       <div>
@@ -1345,6 +1353,11 @@ async function loadReport(){
         </tbody></table></div>
       </div>
     </div>
+    ${Object.keys(catInvest).length?`
+    <div class="section-header"><div class="section-title">Investment</div></div>
+    <div class="table-wrap"><table style="min-width:0"><thead><tr><th>Category</th><th>Amount</th></tr></thead><tbody>
+      ${Object.entries(catInvest).sort((a,b)=>b[1]-a[1]).map(([c,a])=>`<tr><td style="font-size:12px">${c}</td><td style="color:var(--amber);font-family:var(--font-cond);font-size:13px;font-weight:600">${fmt(a)}</td></tr>`).join('')}
+    </tbody></table></div>`:''}
     <div class="chart-card"><div class="chart-title">Daily Flow — ${mLabel}</div><canvas id="dailyChart" height="140"></canvas></div>
     <div class="section-header"><div class="section-title">Sessions (${(sessions||[]).length})</div></div>
     <div class="card-list" style="display:flex">
