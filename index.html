@@ -750,15 +750,21 @@ async function renderAccounting(){
   document.getElementById('topbarActions').innerHTML=`
     <button class="btn" onclick="openAddTx('expense')" style="padding:7px 10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 4v16m8-8H4"/></svg><span class="btn-label"> Cash Out</span></button>
     <button class="btn primary" onclick="openAddTx('income')" style="padding:7px 10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 4v16m8-8H4"/></svg><span class="btn-label"> Cash In</span></button>
+    <button class="btn" onclick="openAddTx('investment')" style="padding:7px 10px;color:var(--amber);border-color:var(--amber)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg><span class="btn-label"> Invest</span></button>
     <button class="btn" onclick="exportCSV(window._txData||[],'transactions.csv')" style="padding:7px 10px" title="Export CSV"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg></button>`;
   document.getElementById('content').innerHTML='<div class="loading">Loading...</div>';
   const {data}=await sb.from('wlf_transactions').select('*').order('date',{ascending:false});
   const txs=data||[];window._txData=txs;
   const incTxs=txs.filter(t=>t.type==='income');
   const expTxs=txs.filter(t=>t.type==='expense');
-  const income=incTxs.reduce((s,t)=>s+Number(t.amount),0);
+  const investTxs=txs.filter(t=>t.type==='investment');
+  const revenue=incTxs.reduce((s,t)=>s+Number(t.amount),0);
+  const investment=investTxs.reduce((s,t)=>s+Number(t.amount),0);
+  const income=revenue; // Cash In = revenue only (excludes investment)
   const expense=expTxs.reduce((s,t)=>s+Number(t.amount),0);
-  const netBal=income-expense;
+  const netIncome=income-expense; // Net Income = Cash In - Cash Out (no investment)
+  const netBal=netIncome; // alias for existing references
+  const cashOnHand=investment+netIncome; // Cash on Hand = Investment + Net Income
   const cashCollected=incTxs.filter(t=>t.payment_mode==='Cash'||!t.payment_mode).reduce((s,t)=>s+Number(t.amount),0);
   const bankCollected=incTxs.filter(t=>t.payment_mode==='Bank Transfer').reduce((s,t)=>s+Number(t.amount),0);
   // Reimbursement tracking
@@ -766,10 +772,7 @@ async function renderAccounting(){
   const reimbDone=expTxs.filter(t=>t.is_reimbursable&&t.is_reimbursed);
   const reimbPendingAmt=reimbPending.reduce((s,t)=>s+Number(t.amount),0);
   const reimbDoneAmt=reimbDone.reduce((s,t)=>s+Number(t.amount),0);
-  // Cash on hand = cash collected - cash expenses (non-reimbursable or already reimbursed) - pending reimbursements
-  const cashExpenses=expTxs.filter(t=>t.payment_mode==='Cash'||!t.payment_mode).reduce((s,t)=>s+Number(t.amount),0);
-  const cashOnHand=cashCollected-cashExpenses;
-  const negWarn=netBal<0?'<div class="alert-banner">⚠️ Club balance is negative: <strong>'+fmt(netBal)+'</strong>. Review expenses.</div>':'';
+  const negWarn=netIncome<0?'<div class="alert-banner">⚠️ Net income is negative: <strong>'+fmt(netIncome)+'</strong>. Review expenses.</div>':'';
 
   // Group transactions by category
   function groupByCategory(list){
@@ -804,11 +807,11 @@ async function renderAccounting(){
   function buildFolders(list,type){
     if(!list.length)return '<div class="empty-state"><p>No entries yet</p></div>';
     const groups=groupByCategory(list);
-    const color=type==='income'?'var(--green)':type==='expense'?'var(--red)':'var(--text)';
+    const color=type==='income'?'var(--green)':type==='expense'?'var(--red)':type==='investment'?'var(--amber)':'var(--text)';
     return Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0])).map(([cat,items],i)=>{
       const total=items.reduce((s,t)=>s+Number(t.amount),0);
       const fid='f-'+type+'-'+i;
-      const sign=type==='income'?'+':type==='expense'?'-':'';
+      const sign=type==='income'?'+':type==='expense'?'-':type==='investment'?'+':'';
       let rows=items.map(t=>txCard(t)).join('');
       return `<div class="folder">
         <div class="folder-header" onclick="toggleFolder('${fid}')">
@@ -830,8 +833,8 @@ async function renderAccounting(){
   function buildDesktopFolders(list,type){
     if(!list.length)return '<div class="empty-state" style="padding:24px"><p>No entries yet</p></div>';
     const groups=groupByCategory(list);
-    const color=type==='income'?'var(--green)':'var(--red)';
-    const sign=type==='income'?'+':'-';
+    const color=type==='income'?'var(--green)':type==='investment'?'var(--amber)':'var(--red)';
+    const sign=type==='income'||type==='investment'?'+':'-';
     return Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0])).map(([cat,items],i)=>{
       const total=items.reduce((s,t)=>s+Number(t.amount),0);
       const fid='df-'+type+'-'+i;
@@ -870,9 +873,16 @@ async function renderAccounting(){
     <div class="stats-grid cols3" style="margin-bottom:10px">
       <div class="stat-card green"><div class="stat-label">Cash In</div><div class="stat-value" style="font-size:15px">${fmt(income)}</div><div class="stat-sub">${incTxs.length} entries</div></div>
       <div class="stat-card red"><div class="stat-label">Cash Out</div><div class="stat-value" style="font-size:15px">${fmt(expense)}</div><div class="stat-sub">${expTxs.length} entries</div></div>
-      <div class="stat-card ${netBal>=0?'green':'red'}"><div class="stat-label">Net</div><div class="stat-value" style="font-size:15px">${fmt(netBal)}</div></div>
+      <div class="stat-card ${netIncome>=0?'green':'red'}"><div class="stat-label">Net Income</div><div class="stat-value" style="font-size:15px">${fmt(netIncome)}</div><div class="stat-sub">Cash In − Cash Out</div></div>
     </div>
-    <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:10px">
+    <div class="stats-grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:10px">
+      <div class="stat-card" style="border-left:3px solid var(--amber)">
+        <div class="stat-label" style="display:flex;align-items:center;gap:6px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Investment
+        </div>
+        <div class="stat-value" style="font-size:17px;color:var(--amber)">${fmt(investment)}</div>
+        <div class="stat-sub">${investTxs.length} injection${investTxs.length!==1?'s':''}</div>
+      </div>
       <div class="stat-card" style="border-left:3px solid #4caf7d">
         <div class="stat-label" style="display:flex;align-items:center;gap:6px">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13"><path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>Cash Collected
@@ -897,8 +907,8 @@ async function renderAccounting(){
         </div>
         <div class="stat-value" style="font-size:17px;color:${cashOnHand>=0?'var(--amber)':'var(--red)'}">${fmt(cashOnHand)}</div>
         <div class="cash-breakdown">
-          <div class="cash-row"><span class="cash-row-label">Cash In</span><span class="cash-row-val" style="color:var(--green)">+${fmt(cashCollected)}</span></div>
-          <div class="cash-row"><span class="cash-row-label">Cash Out</span><span class="cash-row-val" style="color:var(--red)">-${fmt(cashExpenses)}</span></div>
+          <div class="cash-row"><span class="cash-row-label">Investment</span><span class="cash-row-val" style="color:var(--amber)">+${fmt(investment)}</span></div>
+          <div class="cash-row"><span class="cash-row-label">Net Income</span><span class="cash-row-val" style="color:${netIncome>=0?'var(--green)':'var(--red)'}">${netIncome>=0?'+':''}${fmt(netIncome)}</span></div>
         </div>
       </div>
       <div class="stat-card" style="border-left:3px solid ${reimbPendingAmt>0?'var(--red)':'var(--green)'}">
@@ -920,14 +930,16 @@ async function renderAccounting(){
         <button id="tab-all" onclick="setTxTab('all')" style="flex:1;padding:9px;font-family:var(--font-cond);font-size:12px;letter-spacing:1px;border:none;background:var(--white);color:var(--black);cursor:pointer;transition:all .15s">ALL</button>
         <button id="tab-income" onclick="setTxTab('income')" style="flex:1;padding:9px;font-family:var(--font-cond);font-size:12px;letter-spacing:1px;border:none;background:transparent;color:var(--green);cursor:pointer;transition:all .15s">CASH IN</button>
         <button id="tab-expense" onclick="setTxTab('expense')" style="flex:1;padding:9px;font-family:var(--font-cond);font-size:12px;letter-spacing:1px;border:none;background:transparent;color:var(--red);cursor:pointer;transition:all .15s">CASH OUT</button>
+        <button id="tab-investment" onclick="setTxTab('investment')" style="flex:1;padding:9px;font-family:var(--font-cond);font-size:12px;letter-spacing:1px;border:none;background:transparent;color:var(--amber);cursor:pointer;transition:all .15s">INVEST</button>
       </div>
       <div id="tab-all-content">${buildFolders(txs,'all')}</div>
       <div id="tab-income-content" style="display:none">${buildFolders(incTxs,'income')}</div>
       <div id="tab-expense-content" style="display:none">${buildFolders(expTxs,'expense')}</div>
+      <div id="tab-investment-content" style="display:none">${buildFolders(investTxs,'investment')}</div>
     </div>
 
-    <!-- DESKTOP: two-column folders -->
-    <div class="desktop-only" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
+    <!-- DESKTOP: three-column folders -->
+    <div class="desktop-only" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:18px">
       <div>
         <div class="section-header">
           <div class="section-title" style="color:var(--green)">▲ Cash In</div>
@@ -941,6 +953,13 @@ async function renderAccounting(){
           <div style="font-family:var(--font-cond);font-size:12px;color:var(--red)">${fmt(expense)} · ${expTxs.length} entries</div>
         </div>
         <div id="expFolders">${buildDesktopFolders(expTxs,'expense')}</div>
+      </div>
+      <div>
+        <div class="section-header">
+          <div class="section-title" style="color:var(--amber)">◆ Investment</div>
+          <div style="font-family:var(--font-cond);font-size:12px;color:var(--amber)">${fmt(investment)} · ${investTxs.length} entries</div>
+        </div>
+        <div id="invstFolders">${buildDesktopFolders(investTxs,'investment')}</div>
       </div>
     </div>`;
 }
@@ -957,11 +976,11 @@ function toggleFolder(id){
 
 // Tx tab filter for mobile
 function setTxTab(tab){
-  ['all','income','expense'].forEach(t=>{
+  ['all','income','expense','investment'].forEach(t=>{
     const btn=document.getElementById('tab-'+t);
     if(!btn)return;
     btn.style.background=t===tab?'var(--white)':'transparent';
-    btn.style.color=t===tab?'var(--black)':t==='income'?'var(--green)':t==='expense'?'var(--red)':'var(--muted)';
+    btn.style.color=t===tab?'var(--black)':t==='income'?'var(--green)':t==='expense'?'var(--red)':t==='investment'?'var(--amber)':'var(--muted)';
     const content=document.getElementById('tab-'+t+'-content');
     if(content)content.style.display=t===tab?'block':'none';
   });
@@ -973,7 +992,7 @@ function filterTxType(type){
 function openAddTx(dt){showModal('ADD TRANSACTION',`
   <div class="grid-2">
     <div class="form-group"><label class="form-label">Type</label>
-      <select class="form-input" id="tType" onchange="document.getElementById('reimbRow').style.display=this.value==='expense'?'block':'none'"><option value="income" ${dt==='income'?'selected':''}>Cash In</option><option value="expense" ${dt==='expense'?'selected':''}>Cash Out</option></select></div>
+      <select class="form-input" id="tType" onchange="document.getElementById('reimbRow').style.display=this.value==='expense'?'block':'none'"><option value="income" ${dt==='income'?'selected':''}>Cash In</option><option value="expense" ${dt==='expense'?'selected':''}>Cash Out</option><option value="investment" ${dt==='investment'?'selected':''}>Investment</option></select></div>
     <div class="form-group"><label class="form-label">Amount (AED) *</label><input class="form-input" id="tAmt" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"/></div>
   </div>
   <div class="form-group"><label class="form-label">Description *</label><input class="form-input" id="tDesc" placeholder="e.g. Monthly membership fee"/></div>
