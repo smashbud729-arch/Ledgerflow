@@ -875,13 +875,13 @@ async function renderAccounting(){
       <div class="stat-card red"><div class="stat-label">Cash Out</div><div class="stat-value" style="font-size:15px">${fmt(expense)}</div><div class="stat-sub">${expTxs.length} entries</div></div>
       <div class="stat-card ${netIncome>=0?'green':'red'}"><div class="stat-label">Net Income</div><div class="stat-value" style="font-size:15px">${fmt(netIncome)}</div><div class="stat-sub">Cash In − Cash Out</div></div>
     </div>
-    <div class="stats-grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:10px">
-      <div class="stat-card" style="border-left:3px solid var(--amber)">
+    <div class="stats-grid" style="grid-template-columns:1fr 1fr;margin-bottom:10px">
+      <div class="stat-card" style="border-left:3px solid var(--amber);grid-column:1/-1">
         <div class="stat-label" style="display:flex;align-items:center;gap:6px">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="13" height="13"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Investment
         </div>
         <div class="stat-value" style="font-size:17px;color:var(--amber)">${fmt(investment)}</div>
-        <div class="stat-sub">${investTxs.length} injection${investTxs.length!==1?'s':''}</div>
+        <div class="stat-sub">${investTxs.length} injection${investTxs.length!==1?'s':''} · Owner capital, not counted as revenue</div>
       </div>
       <div class="stat-card" style="border-left:3px solid #4caf7d">
         <div class="stat-label" style="display:flex;align-items:center;gap:6px">
